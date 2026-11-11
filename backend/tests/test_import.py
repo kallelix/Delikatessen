@@ -74,6 +74,7 @@ def test_preview_content(client, server):
     first = res["ingredients"][0]
     assert (first["amount"], first["unit"], first["name"]) == (1.2, "kg", "Kartoffeln")
     assert first["ingredient_id"] is not None  # über Normalisierung zugeordnet
+    assert first["ingredient_name"] == "Kartoffel"  # Katalogname für die Vorschau
     gouda = res["ingredients"][2]
     assert gouda["note"] == "gerieben" and gouda["ingredient_id"] is not None
     assert res["image_url"] == "https://example.org/gratin.jpg"

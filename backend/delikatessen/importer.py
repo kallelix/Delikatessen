@@ -58,6 +58,7 @@ def preview_ingredients(session: Session, lines: list[str]) -> list[dict]:
         if not line or not line.strip():
             continue
         p = parse_ingredient_line(line)
+        ingredient_id = matcher.match(p.name)
         out.append(
             {
                 "line": p.line,
@@ -65,7 +66,8 @@ def preview_ingredients(session: Session, lines: list[str]) -> list[dict]:
                 "unit": p.unit,
                 "name": p.name,
                 "note": p.note,
-                "ingredient_id": matcher.match(p.name),
+                "ingredient_id": ingredient_id,
+                "ingredient_name": matcher.names.get(ingredient_id) if ingredient_id else None,
             }
         )
     return out

@@ -78,12 +78,28 @@ def cmd_restore(args) -> None:
         if settings.image_dir.exists():
             shutil.rmtree(settings.image_dir)
         with tarfile.open(tar_path) as tar:
-            tar.extractall(settings.data_dir, filter="data")
+            _safe_extract(tar, settings.data_dir)
     print(f"Sicherung {src} nach {settings.data_dir} zurückgespielt")
+
+
+def _safe_extract(tar: tarfile.TarFile, target: Path) -> None:
+    """Entpackt nur normale Dateien und Ordner unterhalb von target."""
+    if hasattr(tarfile, "data_filter"):
+        tar.extractall(target, filter="data")
+        return
+    root = target.resolve()
+    for member in tar.getmembers():
+        dest = (target / member.name).resolve()
+        if not (member.isfile() or member.isdir()) or not dest.is_relative_to(root):
+            sys.exit(f"Unerwarteter Eintrag in der Sicherung: {member.name}")
+    tar.extractall(target)
 
 
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    # keine abgerufenen Rezeptadressen und keine Migrationsdetails im Journal (Abschnitt 11)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("alembic").setLevel(logging.WARNING)
     parser = argparse.ArgumentParser(prog="delikatessen")
     sub = parser.add_subparsers(required=True)
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=Delikatessen Sicherung von Datenbank und Bildern
+
+[Service]
+Type=oneshot
+User=delikatessen
+Group=delikatessen
+EnvironmentFile=/etc/delikatessen/env
+ExecStart=/opt/delikatessen/current/venv/bin/delikatessen backup /var/backups/delikatessen --keep 14
+NoNewPrivileges=true
+# SQLite braucht im WAL-Modus auch zum Lesen Schreibzugriff auf die -shm-Datei
+ProtectSystem=strict
+ReadWritePaths=/var/backups/delikatessen /var/lib/delikatessen

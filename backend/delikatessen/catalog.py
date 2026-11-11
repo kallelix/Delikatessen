@@ -31,7 +31,9 @@ class Matcher:
     def __init__(self, session: Session):
         self.exact: dict[str, int] = {}
         self.forms: dict[str, int] = {}
+        self.names: dict[int, str] = {}
         for ing in session.scalars(select(Ingredient)):
+            self.names[ing.id] = ing.name
             n = normalize(ing.name)
             self.exact.setdefault(n, ing.id)
             for a in ing.aliases:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from .importer import ImportRunner
 from .migrate import upgrade
 
 log = logging.getLogger("delikatessen")
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+mimetypes.add_type("text/javascript", ".js")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

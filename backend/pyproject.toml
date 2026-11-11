@@ -32,7 +32,7 @@ build-backend = "setuptools.build_meta"
 include = ["delikatessen*"]
 
 [tool.setuptools.package-data]
-delikatessen = ["data/*.json", "migrations/*.py", "migrations/versions/*.py", "alembic.ini"]
+delikatessen = ["data/*.json", "migrations/*.py", "migrations/*.mako", "migrations/versions/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

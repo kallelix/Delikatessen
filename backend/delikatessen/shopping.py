@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -70,6 +71,9 @@ def compute_lines(session: Session, week: PlanWeek) -> list[Line]:
     for line in lines.values():
         if line.kind in ("masse", "volumen"):
             line.amount, line.unit = humanize_base(line.amount, line.kind)
+        elif line.unit == "Stück":
+            # halbe Äpfel gibt es nicht zu kaufen
+            line.amount = float(math.ceil(line.amount - 1e-9))
         elif line.kind is not None:
             line.amount = round_amount(line.amount, line.unit)
     return sorted(lines.values(), key=lambda line: (line.group == OTHER_GROUP, line.group, line.name.lower()))
