@@ -1,0 +1,181 @@
+{
+  "tags": ["Mittag", "Snack", "Abendessen", "vegetarisch", "Pasta", "Reisgericht"],
+  "groups": {
+    "Gemüse": [
+      ["Kartoffel", "g", ["Kartoffeln", "Erdapfel", "festkochende Kartoffeln", "mehligkochende Kartoffeln"]],
+      ["Süßkartoffel", "g", []],
+      ["Zwiebel", "Stück", ["rote Zwiebel", "Gemüsezwiebel"]],
+      ["Frühlingszwiebel", "Stück", ["Lauchzwiebel"]],
+      ["Knoblauch", "Zehe", ["Knoblauchzehe", "Knoblauchzehen"]],
+      ["Schalotte", "Stück", []],
+      ["Lauch", "Stange", ["Porree"]],
+      ["Karotte", "Stück", ["Möhre", "Möhren", "Mohrrübe"]],
+      ["Sellerie", "g", ["Knollensellerie", "Selleriestange", "Staudensellerie"]],
+      ["Tomate", "Stück", ["Kirschtomate", "Cherrytomate", "Cocktailtomate"]],
+      ["Paprika", "Stück", ["Paprikaschote", "rote Paprika", "gelbe Paprika", "grüne Paprika"]],
+      ["Zucchini", "Stück", []],
+      ["Aubergine", "Stück", []],
+      ["Gurke", "Stück", ["Salatgurke"]],
+      ["Brokkoli", "g", ["Broccoli"]],
+      ["Blumenkohl", "g", []],
+      ["Spinat", "g", ["Blattspinat", "Babyspinat"]],
+      ["Kohlrabi", "Stück", []],
+      ["Weißkohl", "g", ["Weißkraut"]],
+      ["Rotkohl", "g", ["Rotkraut", "Blaukraut"]],
+      ["Wirsing", "g", []],
+      ["Rosenkohl", "g", []],
+      ["Grüne Bohnen", "g", ["Brechbohnen", "Prinzessbohnen"]],
+      ["Erbsen", "g", ["TK-Erbsen", "Erbse"]],
+      ["Mais", "g", ["Zuckermais"]],
+      ["Champignons", "g", ["Champignon", "Pilze"]],
+      ["Kürbis", "g", ["Hokkaido", "Hokkaidokürbis", "Butternut"]],
+      ["Rote Bete", "g", ["Rote Beete"]],
+      ["Pastinake", "Stück", []],
+      ["Fenchel", "Stück", []],
+      ["Spargel", "g", []],
+      ["Radieschen", "Bund", []],
+      ["Kopfsalat", "Kopf", ["Salat", "Eisbergsalat", "Romanasalat"]],
+      ["Rucola", "g", []],
+      ["Avocado", "Stück", []]
+    ],
+    "Obst": [
+      ["Apfel", "Stück", ["Äpfel"]],
+      ["Banane", "Stück", []],
+      ["Zitrone", "Stück", ["Zitronensaft", "Zitronenschale"]],
+      ["Limette", "Stück", ["Limettensaft"]],
+      ["Orange", "Stück", ["Orangensaft"]],
+      ["Erdbeere", "g", []],
+      ["Heidelbeere", "g", ["Blaubeere"]],
+      ["Himbeere", "g", []],
+      ["Birne", "Stück", []],
+      ["Rosine", "g", []]
+    ],
+    "Kräuter": [
+      ["Petersilie", "Bund", ["glatte Petersilie", "krause Petersilie"]],
+      ["Schnittlauch", "Bund", []],
+      ["Basilikum", "Bund", []],
+      ["Dill", "Bund", []],
+      ["Koriander", "Bund", ["Koriandergrün"]],
+      ["Thymian", "Zweig", []],
+      ["Rosmarin", "Zweig", []],
+      ["Oregano", "TL", []],
+      ["Minze", "Bund", []],
+      ["Lorbeerblatt", "Blatt", ["Lorbeer", "Lorbeerblätter"]]
+    ],
+    "Gewürze": [
+      ["Salz", "Prise", ["Meersalz"]],
+      ["Pfeffer", "Prise", ["schwarzer Pfeffer"]],
+      ["Paprikapulver", "TL", ["Paprika edelsüß", "Paprika rosenscharf"]],
+      ["Currypulver", "TL", ["Curry"]],
+      ["Kreuzkümmel", "TL", ["Cumin"]],
+      ["Zimt", "TL", []],
+      ["Muskatnuss", "Prise", ["Muskat"]],
+      ["Chili", "Stück", ["Chilischote", "Chiliflocken"]],
+      ["Ingwer", "g", []],
+      ["Gemüsebrühe", "ml", ["Brühe", "Gemüsefond"]],
+      ["Hühnerbrühe", "ml", ["Geflügelbrühe", "Hühnerfond"]],
+      ["Rinderbrühe", "ml", ["Rinderfond"]],
+      ["Vanillezucker", "Packung", ["Vanille"]]
+    ],
+    "Milchprodukte": [
+      ["Milch", "ml", ["Vollmilch"]],
+      ["Butter", "g", []],
+      ["Sahne", "ml", ["Schlagsahne", "süße Sahne"]],
+      ["Schmand", "g", []],
+      ["Saure Sahne", "g", []],
+      ["Crème fraîche", "g", ["Creme fraiche"]],
+      ["Joghurt", "g", ["Naturjoghurt", "griechischer Joghurt"]],
+      ["Quark", "g", ["Magerquark", "Speisequark"]],
+      ["Frischkäse", "g", []]
+    ],
+    "Käse": [
+      ["Parmesan", "g", ["Parmigiano", "Grana Padano"]],
+      ["Mozzarella", "g", []],
+      ["Gouda", "g", []],
+      ["Emmentaler", "g", []],
+      ["Reibekäse", "g", ["geriebener Käse", "Käse", "Bergkäse"]],
+      ["Feta", "g", ["Schafskäse"]]
+    ],
+    "Eier": [
+      ["Ei", "Stück", ["Eier"]]
+    ],
+    "Fleisch": [
+      ["Hackfleisch", "g", ["Rinderhack", "gemischtes Hackfleisch", "Hack"]],
+      ["Hähnchenbrust", "g", ["Hähnchenbrustfilet", "Hühnerbrust"]],
+      ["Hähnchenschenkel", "Stück", []],
+      ["Putenbrust", "g", []],
+      ["Schweinefilet", "g", []],
+      ["Schweinebraten", "g", []],
+      ["Rindfleisch", "g", ["Rindergulasch", "Gulasch"]],
+      ["Speck", "g", ["Bacon", "Schinkenwürfel", "Speckwürfel"]],
+      ["Schinken", "g", ["Kochschinken"]],
+      ["Würstchen", "Stück", ["Wiener", "Bratwurst"]]
+    ],
+    "Fisch und Meeresfrüchte": [
+      ["Lachs", "g", ["Lachsfilet"]],
+      ["Seelachs", "g", ["Seelachsfilet"]],
+      ["Thunfisch", "Dose", []],
+      ["Fischstäbchen", "Stück", []],
+      ["Garnelen", "g", ["Shrimps", "Krabben", "Garnele"]]
+    ],
+    "Nüsse": [
+      ["Walnuss", "g", ["Walnüsse", "Walnusskerne"]],
+      ["Haselnuss", "g", ["Haselnüsse", "gemahlene Haselnüsse"]],
+      ["Mandel", "g", ["Mandeln", "gemahlene Mandeln"]],
+      ["Erdnuss", "g", ["Erdnüsse", "Erdnussbutter"]],
+      ["Cashewkern", "g", ["Cashews", "Cashewkerne"]],
+      ["Pinienkern", "g", ["Pinienkerne"]]
+    ],
+    "Getreide und Teigwaren": [
+      ["Spaghetti", "g", []],
+      ["Nudeln", "g", ["Pasta", "Penne", "Fusilli", "Farfalle", "Rigatoni", "Tagliatelle", "Makkaroni"]],
+      ["Lasagneplatten", "Stück", ["Lasagneblätter"]],
+      ["Spätzle", "g", []],
+      ["Gnocchi", "g", []],
+      ["Reis", "g", ["Langkornreis", "Basmatireis", "Jasminreis", "Risottoreis", "Milchreis"]],
+      ["Couscous", "g", []],
+      ["Bulgur", "g", []],
+      ["Haferflocken", "g", []],
+      ["Brot", "Scheibe", ["Toast", "Toastbrot", "Brötchen", "Baguette"]],
+      ["Semmelbrösel", "g", ["Paniermehl"]],
+      ["Tortilla", "Stück", ["Wraps", "Tortillas"]]
+    ],
+    "Hülsenfrüchte": [
+      ["Linsen", "g", ["rote Linsen", "Linse", "Berglinsen"]],
+      ["Kichererbsen", "g", ["Kichererbse"]],
+      ["Kidneybohnen", "Dose", []],
+      ["Weiße Bohnen", "Dose", []],
+      ["Tofu", "g", []]
+    ],
+    "Backzutaten": [
+      ["Mehl", "g", ["Weizenmehl", "Dinkelmehl", "Mehl Type 405"]],
+      ["Zucker", "g", ["brauner Zucker", "Rohrzucker"]],
+      ["Puderzucker", "g", []],
+      ["Backpulver", "Packung", []],
+      ["Hefe", "Würfel", ["Trockenhefe", "frische Hefe"]],
+      ["Speisestärke", "EL", ["Stärke", "Maisstärke"]],
+      ["Kakao", "EL", ["Kakaopulver"]],
+      ["Schokolade", "g", ["Zartbitterschokolade"]],
+      ["Honig", "EL", []]
+    ],
+    "Öle und Fette": [
+      ["Olivenöl", "EL", []],
+      ["Öl", "EL", ["Rapsöl", "Sonnenblumenöl", "Pflanzenöl", "Speiseöl"]],
+      ["Sesamöl", "TL", []]
+    ],
+    "Saucen und Würzmittel": [
+      ["Tomatenmark", "EL", []],
+      ["Passierte Tomaten", "ml", ["Passata", "Tomaten passiert"]],
+      ["Gehackte Tomaten", "Dose", ["Dosentomaten", "stückige Tomaten"]],
+      ["Kokosmilch", "ml", []],
+      ["Sojasauce", "EL", ["Sojasoße"]],
+      ["Senf", "TL", ["mittelscharfer Senf", "Dijonsenf"]],
+      ["Essig", "EL", ["Weißweinessig", "Balsamico", "Apfelessig"]],
+      ["Ketchup", "EL", []],
+      ["Mayonnaise", "EL", []],
+      ["Pesto", "Glas", ["Basilikumpesto"]],
+      ["Wein", "ml", ["Weißwein", "Rotwein"]],
+      ["Wasser", "ml", []]
+    ]
+  }
+}
