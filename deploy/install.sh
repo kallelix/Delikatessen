@@ -81,6 +81,11 @@ if [[ ! -f "$CONF/env" ]]; then
   info "Lege $CONF/env an, bitte DELIKATESSEN_TRUSTED_PROXIES prüfen"
   install -o root -g "$USER_NAME" -m 640 "$TARGET/.env.example" "$CONF/env"
 fi
+if ! grep -qE '^DELIKATESSEN_SECRET_KEY=.+' "$CONF/env"; then
+  info "Erzeuge Schlüssel für gespeicherte Zugangsdaten"
+  sed -i '/^DELIKATESSEN_SECRET_KEY=/d' "$CONF/env"
+  echo "DELIKATESSEN_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> "$CONF/env"
+fi
 
 info "Datenbank migrieren"
 set -a; source "$CONF/env"; set +a

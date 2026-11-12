@@ -11,7 +11,8 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
 from . import __version__, catalog
-from .api import family, imports, plans, recipes
+from .api import bring, family, imports, plans, recipes
+from .bring import LiveBring
 from .config import Settings, get_settings
 from .db import Database
 from .importer import ImportRunner
@@ -49,9 +50,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.db = db
     app.state.imports = ImportRunner(db.sessionmaker, settings)
     app.state.today_override = None
+    app.state.bring_factory = LiveBring
 
     api = APIRouter(prefix="/api/v1")
-    for module in (recipes, plans, family, imports):
+    for module in (recipes, plans, family, imports, bring):
         api.include_router(module.router)
     app.include_router(api)
 

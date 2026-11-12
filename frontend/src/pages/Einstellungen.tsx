@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useApp } from "../AppContext";
+import { BringEinstellungen } from "../components/BringEinstellungen";
 import { useToast } from "../components/Toast";
 import { errorText, MEAL_LABEL, useLoad } from "../lib";
 import type { AppSettings, Meal, Weights } from "../types";
@@ -107,6 +108,9 @@ export function Einstellungen() {
         <span>Planvorschlag donnerstags um (ab Stufe 2)</span>
         <input type="time" value={s.plan_time} onChange={(e) => setS({ ...s, plan_time: e.target.value })} />
       </label>
+
+      <h2>Bring!</h2>
+      <BringEinstellungen />
 
       <div className="actions-bottom">
         <button type="button" className="btn primary wide" onClick={save}>

@@ -219,3 +219,19 @@ test("Bewerten durch Eltern auch fürs Kind", async () => {
   await page.goto("/mehr/rangliste");
   await expect(page.locator(".ranking li").first()).toContainText("Kartoffelgratin");
 });
+
+test("Einstellungen: Bring! verbinden, Liste bleibt ohne Bring! nutzbar", async () => {
+  await page.goto("/mehr/einstellungen");
+  await expect(page.getByRole("heading", { name: "Bring!" })).toBeVisible();
+  // Verbinden würde den echten Dienst ansprechen, deshalb nur das Formular prüfen
+  const connect = page.getByRole("button", { name: "Mit Bring! verbinden" });
+  await expect(connect).toBeDisabled();
+  await page.getByLabel("E-Mail des Bring!-Kontos").fill("familie@example.org");
+  await page.getByLabel("Passwort").fill("geheim");
+  await expect(connect).toBeEnabled();
+  await shots("10-bring");
+  // AK-21: ohne Bring! bietet die Einkaufsliste das Teilen als Text an
+  await page.getByRole("link", { name: "Einkauf" }).click();
+  await expect(page.getByRole("button", { name: "Als Text teilen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "An Bring! senden" })).toHaveCount(0);
+});

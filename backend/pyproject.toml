@@ -15,6 +15,12 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pillow>=10.4",
     "recipe-scrapers>=15.0",
+    # Stufe 2: Bring! ist inoffiziell und deshalb exakt gepinnt (Abschnitt 2)
+    "bring-api==1.1.2",
+    "cryptography>=43",
+    "anthropic>=2.0",
+    "pywebpush>=2.0",
+    "apscheduler>=3.11,<4",
     "tzdata; sys_platform == 'win32'",
 ]
 

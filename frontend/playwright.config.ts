@@ -28,6 +28,7 @@ export default defineConfig({
         DELIKATESSEN_FRONTEND_DIR: path.resolve("dist"),
         // nur für den Test: Rezeptseiten kommen vom lokalen Testserver
         DELIKATESSEN_ALLOW_PRIVATE_FETCH: "true",
+        DELIKATESSEN_SECRET_KEY: "nur-fuer-tests",
       },
     },
     {

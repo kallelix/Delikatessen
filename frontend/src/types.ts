@@ -144,6 +144,28 @@ export interface ShoppingItem {
   recipes: string[];
   checked: boolean;
   at_home: boolean;
+  /** Stand in Bring!: noch nicht übertragen, übertragen, seitdem geändert, oder null (nicht gebraucht) */
+  bring: "offen" | "übertragen" | "geändert" | null;
+}
+
+export interface BringSettings {
+  enabled: boolean;
+  configured: boolean;
+  mail: string | null;
+  list_uuid: string | null;
+  list_name: string | null;
+  secret_key_missing: boolean;
+}
+
+export interface BringList {
+  uuid: string;
+  name: string;
+}
+
+export interface BringTransfer {
+  uebertragen: number;
+  entfernt: number;
+  liste: string | null;
 }
 
 export interface PreviewIngredient extends RecipeIngredient {

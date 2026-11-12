@@ -585,6 +585,24 @@ input[type="range"] {
 .field.slider > span {
   justify-content: space-between;
 }
+.field.check {
+  flex-direction: row;
+  align-items: center;
+  min-height: 48px;
+}
+.field.check input {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+.bring-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.notice .btn {
+  margin-top: 0.5rem;
+}
 .row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

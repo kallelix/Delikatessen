@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     fetch_max_bytes: int = 5_000_000
     # Nur für Tests: private Adressen beim Import erlauben
     allow_private_fetch: bool = False
+    # Schlüssel für Zugangsdaten in der Datenbank, etwa Bring! (Abschnitt 11). install.sh erzeugt ihn.
+    secret_key: str | None = None
 
     @field_validator("frontend_dir", mode="before")
     @classmethod

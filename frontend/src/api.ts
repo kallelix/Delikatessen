@@ -1,6 +1,9 @@
 import { getProfileId } from "./profile";
 import type {
   AppSettings,
+  BringList,
+  BringSettings,
+  BringTransfer,
   Group,
   ImportJob,
   Ingredient,
@@ -149,5 +152,12 @@ export const api = {
   me: () => request<Person | null>("GET", "/me"),
   settings: () => request<AppSettings>("GET", "/settings"),
   saveSettings: (s: AppSettings) => request<AppSettings>("PUT", "/settings", s),
+  bring: () => request<BringSettings>("GET", "/bring"),
+  saveBring: (enabled: boolean, list?: BringList) =>
+    request<BringSettings>("PUT", "/bring", { enabled, list_uuid: list?.uuid ?? null, list_name: list?.name ?? null }),
+  bringAccount: (mail: string, password: string) => request<BringList[]>("PUT", "/bring/account", { mail, password }),
+  deleteBringAccount: () => request<BringSettings>("DELETE", "/bring/account"),
+  bringLists: () => request<BringList[]>("GET", "/bring/lists"),
+  sendToBring: (start: string) => request<BringTransfer>("POST", `/plans/${start}/shopping/bring`),
   status: () => request<{ version: string; datenbank: string; dienste: Record<string, { aktiv: boolean; hinweis: string }> }>("GET", "/status"),
 };

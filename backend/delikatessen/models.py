@@ -236,6 +236,10 @@ class ShoppingItem(Base):
     key: Mapped[str] = mapped_column(String(60))
     checked: Mapped[bool] = mapped_column(Boolean, default=False)
     at_home: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Zuletzt an Bring! übertragen: Kennung, Name und Mengentext (F-33). Ohne Kennung nicht in Bring!.
+    bring_uuid: Mapped[str | None] = mapped_column(String(36), default=None)
+    bring_name: Mapped[str | None] = mapped_column(String(200), default=None)
+    bring_spec: Mapped[str | None] = mapped_column(String(200), default=None)
 
     __table_args__ = (UniqueConstraint("week_id", "key", name="shopping_unique_key"),)
 

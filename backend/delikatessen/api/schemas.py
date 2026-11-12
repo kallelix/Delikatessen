@@ -267,6 +267,8 @@ class ShoppingItemOut(BaseModel):
     recipes: list[str]
     checked: bool
     at_home: bool
+    # Stand in Bring!: offen, übertragen, geändert oder None (nicht gebraucht und nicht in Bring!)
+    bring: str | None = None
 
 
 class ShoppingPatch(BaseModel):

@@ -8,8 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import __version__, appsettings
+from ..config import Settings
 from ..models import Ingredient, IngredientGroup, Person, PersonNoGo
-from .deps import current_person, get_db, require_adult
+from .deps import current_person, get_db, get_settings, require_adult
 from .schemas import NoGoOut, PersonIn, PersonOut
 
 router = APIRouter()
@@ -118,13 +119,15 @@ def put_app_settings(data: appsettings.AppSettings, db: Session = Depends(get_db
 
 
 @router.get("/status")
-def status(db: Session = Depends(get_db)):
+def status(db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+    from . import bring
+
     db.execute(select(1))
     return {
         "version": __version__,
         "datenbank": "ok",
         "dienste": {
-            "bring": {"aktiv": False, "hinweis": "kommt mit Stufe 2"},
+            "bring": bring.status(db, settings),
             "ki": {"aktiv": False, "hinweis": "kommt mit Stufe 2"},
             "push": {"aktiv": False, "hinweis": "kommt mit Stufe 2"},
         },
