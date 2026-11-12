@@ -20,7 +20,7 @@ Proxmox-Backups des Containers zusätzlich einplanen. Sie ersetzen nicht die tä
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/kallelix/Delikatessen/main/deploy/install.sh
 less install.sh          # vorher lesen
-sudo bash install.sh     # neuestes Release, oder: sudo bash install.sh v0.1.0
+sudo bash install.sh     # neuestes Release, oder: sudo bash install.sh v0.1.1
 ```
 
 Das Skript ist wiederholbar. Es legt den Nutzer `delikatessen`, die Python-Umgebung unter `/opt/delikatessen/releases/<Version>`, die Konfiguration `/etc/delikatessen/env`, den Dienst und den Sicherungs-Timer an. Pakete installiert es nur mit den Hashes aus der Lockdatei.

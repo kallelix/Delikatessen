@@ -3,7 +3,7 @@
 # Wiederholbar: legt Nutzer, Python-Umgebung und systemd-Dienst an und lässt Vorhandenes stehen.
 #
 #   sudo ./install.sh                 # neuestes Release von GitHub
-#   sudo ./install.sh v0.1.0          # bestimmtes Release
+#   sudo ./install.sh v0.1.1          # bestimmtes Release
 #   sudo ./install.sh --archiv datei  # lokales Release-Archiv, etwa ohne Internet
 set -euo pipefail
 
