@@ -6,6 +6,10 @@ server {
     listen 443 ssl;
     server_name delikatessen.example.org;
 
+    # Eigenes Log: zeigt die Absenderadresse, ohne die Zugriffe auf andere Seiten dieses nginx
+    access_log /var/log/nginx/delikatessen.access.log;
+    error_log  /var/log/nginx/delikatessen.error.log;
+
     ssl_certificate     /etc/letsencrypt/live/example.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.org/privkey.pem;
 
