@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Startknopf in der GitHub-Oberfläche: bei "Use workflow from" den Tag wählen
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,6 +24,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Version prüfen
         run: |
+          [[ "$GITHUB_REF_TYPE" == tag ]] || { echo "Bitte bei 'Use workflow from' einen Tag wählen"; exit 1; }
           v=$(python -c "import tomllib;print(tomllib.load(open('backend/pyproject.toml','rb'))['project']['version'])")
           test "v$v" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME passt nicht zu Version $v"; exit 1; }
       - name: Tests
