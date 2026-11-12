@@ -38,9 +38,16 @@ Protokolle: `journalctl -u delikatessen`. Rezepttexte, Bilder und abgerufene Lin
 
 ## 3. nginx und NetBird
 
-Vorlage: [deploy/nginx-delikatessen.conf.example](../deploy/nginx-delikatessen.conf.example). Wichtig sind `proxy_set_header X-Forwarded-For $remote_addr` und `client_max_body_size 16m` für Fotos. Das Zertifikat kommt per Let's Encrypt mit DNS-Challenge, HTTPS ist für Installation, Kamera und Teilen-Menü Pflicht (N-04).
+Vorlage: [deploy/nginx-delikatessen.conf.example](../deploy/nginx-delikatessen.conf.example). Wichtig sind `allow`/`deny` für das NetBird-Netz, `proxy_set_header X-Forwarded-For` und `client_max_body_size 64m` für bis zu 4 Fotos. Ein vorhandenes Wildcard-Zertifikat passt. HTTPS ist auch im NetBird Pflicht, weil der Browser sonst Installation, Offline-Lesen, Teilen-Menü, Push, Diktat und „Bildschirm bleibt an“ sperrt (N-04).
 
-In NetBird lässt eine Access Policy nur die Familiengeräte auf Port 443 des nginx-LXC zu. Die Trennung von Erwachsenen und Kindern in der App ist bewusst nur ein Bedienschutz (N-09).
+**Nur im NetBird erreichbar**, auch wenn derselbe nginx andere Seiten ins Internet ausliefert:
+
+- Im Server-Block nur das NetBird-Netz zulassen (`allow`/`deny` in der Vorlage). Das setzt voraus, dass der nginx-LXC selbst NetBird-Peer ist. Kommen die Geräte über einen Routing-Peer mit Masquerade, sieht nginx nur dessen Adresse.
+- Der Name muss für die Geräte auf die NetBird-IP des nginx-LXC zeigen, nicht auf die öffentliche Adresse, sonst kommt 403. Am einfachsten ein eigener A-Record für den Namen, er hat Vorrang vor einem Wildcard-Eintrag. Alternativ ein DNS-Eintrag in NetBird.
+- In NetBird lässt eine Access Policy nur die Familiengeräte auf Port 443 des nginx-LXC zu.
+- Im delikatessen-LXC Port 8000 nur vom nginx-LXC zulassen (Proxmox-Firewall), sonst ginge es im Heimnetz an nginx vorbei per HTTP.
+
+Die Trennung von Erwachsenen und Kindern in der App ist bewusst nur ein Bedienschutz (N-09).
 
 Optional ordnet die App ein Gerät über seine NetBird-IP automatisch einem Profil zu: unter „Mehr“ › „Familie“ bei der Person eintragen.
 

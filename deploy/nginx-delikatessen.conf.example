@@ -1,23 +1,28 @@
-# Beispiel für den vorhandenen nginx-LXC. Domain, Zertifikat und Adresse anpassen.
-# Erreichbar nur über NetBird, nichts wird ins Internet freigegeben (N-10).
+# Beispiel für den vorhandenen nginx-LXC. Domain, Zertifikat, NetBird-Netz und Adresse anpassen.
+# Erreichbar nur über NetBird, auch wenn derselbe nginx andere Seiten ins Internet ausliefert (N-10).
 
 server {
     listen 443 ssl;
     http2 on;
     server_name delikatessen.example.org;
 
-    ssl_certificate     /etc/letsencrypt/live/delikatessen.example.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/delikatessen.example.org/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.org/privkey.pem;
 
-    # Rezeptfotos dürfen groß sein
-    client_max_body_size 16m;
+    # Nur Geräte im NetBird. Netz aus dem NetBird-Dashboard (Settings › Networks), Vorgabe liegt in 100.64.0.0/10.
+    # Alle anderen bekommen 403, auch Geräte im Heimnetz ohne NetBird.
+    allow 100.64.0.0/10;
+    deny all;
+
+    # Import per Foto: bis zu 4 Fotos mit je bis zu 15 MB in einer Anfrage
+    client_max_body_size 64m;
 
     location / {
+        # Feste Adresse statt Hostname: Ein nicht auflösbarer Name hielte den ganzen nginx beim Start an
         proxy_pass http://192.0.2.20:8000;
         proxy_set_header Host $host;
-        # Die App wertet nur diesen Header aus und nur, wenn die Anfrage von hier kommt
+        # Die App nimmt den letzten Eintrag und nur, wenn die Anfrage von DELIKATESSEN_TRUSTED_PROXIES kommt
         proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 90s;
     }
 }
