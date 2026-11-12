@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api } from "../api";
 import { Icon } from "../components/Icon";
-import { useLoad } from "../lib";
+import { pendingRecipeDeletes, useLoad } from "../lib";
 import type { RecipeSummary } from "../types";
 
 /** Suche und Filter (F-03). Filter stehen in der Adresse, damit "zurück" sie behält. */
@@ -28,6 +28,8 @@ export function Rezepte() {
     () => api.recipes({ q, tag, size: size || undefined, max_duration: maxDuration, favorite: favorite || undefined }),
     [params.toString()],
   );
+  // Gerade gelöschte Rezepte bestehen auf dem Server noch, solange "Rückgängig" angeboten wird
+  const recipes = list.data?.filter((r) => !pendingRecipeDeletes.has(r.id));
 
   function update(changes: Record<string, string | string[] | null>) {
     const next = new URLSearchParams(params);
@@ -81,7 +83,7 @@ export function Rezepte() {
       </div>
 
       {list.error && <p className="error">{list.error}</p>}
-      {list.data && list.data.length === 0 && (
+      {recipes && recipes.length === 0 && (
         <div className="empty">
           {q || tag.length || size || maxDuration || favorite ? (
             <p>Nichts gefunden.</p>
@@ -95,7 +97,7 @@ export function Rezepte() {
           )}
         </div>
       )}
-      <ul className="recipe-list">{list.data?.map((r) => <RecipeCard key={r.id} r={r} />)}</ul>
+      <ul className="recipe-list">{recipes?.map((r) => <RecipeCard key={r.id} r={r} />)}</ul>
     </section>
   );
 }

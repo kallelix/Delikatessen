@@ -322,3 +322,21 @@ test("Benachrichtigungen lassen sich am Gerät einschalten", async () => {
   await expect(page.getByRole("heading", { name: "Benachrichtigungen" })).toBeVisible();
   await expect(page.getByText("Benachrichtigung, wenn der Wochenplan da ist")).toBeVisible();
 });
+
+test("Gelöschtes Rezept verschwindet sofort aus der Liste", async () => {
+  await createRecipe("Testsuppe", "Hauptmahlzeit", [["1", "l", "Sahne"]]);
+  const card = page.locator(".recipe-card", { hasText: "Testsuppe" });
+  await page.getByRole("button", { name: "Löschen" }).click();
+  await expect(page.getByRole("heading", { name: "Rezepte" })).toBeVisible();
+  await expect(page.locator(".recipe-card").first()).toBeVisible();
+  await expect(card).toHaveCount(0);
+  // Rückgängig bringt es zurück, danach wirklich löschen und nach Ablauf der Frist neu laden
+  await page.getByRole("button", { name: "Rückgängig" }).click();
+  await expect(page.getByRole("heading", { name: "Testsuppe" })).toBeVisible();
+  await page.getByRole("button", { name: "Löschen" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Rückgängig" })).toHaveCount(0, { timeout: 8000 });
+  await page.reload();
+  await expect(page.locator(".recipe-card").first()).toBeVisible();
+  await expect(card).toHaveCount(0);
+});

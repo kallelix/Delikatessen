@@ -4,7 +4,7 @@ import { api } from "../api";
 import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toast";
 import { useApp } from "../AppContext";
-import { dateLabel, errorText, familyPortions, useLoad } from "../lib";
+import { dateLabel, errorText, familyPortions, pendingRecipeDeletes, useLoad } from "../lib";
 import { formatNumber, formatQuantity, scale } from "../units";
 import type { Recipe } from "../types";
 
@@ -36,6 +36,7 @@ export function RezeptDetail() {
   function remove() {
     // Löschen lässt sich kurz rückgängig machen (Abschnitt 9)
     setHidden(true);
+    pendingRecipeDeletes.add(r.id);
     navigate("/rezepte");
     toast.undoable(
       `„${r.title}“ gelöscht`,
@@ -43,10 +44,14 @@ export function RezeptDetail() {
         try {
           await api.deleteRecipe(r.id);
         } catch (e) {
+          pendingRecipeDeletes.delete(r.id);
           toast.show(errorText(e), { error: true });
         }
       },
-      () => navigate(`/rezepte/${r.id}`),
+      () => {
+        pendingRecipeDeletes.delete(r.id);
+        navigate(`/rezepte/${r.id}`);
+      },
     );
   }
 

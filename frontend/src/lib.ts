@@ -60,6 +60,9 @@ export function today(): string {
   return iso(new Date());
 }
 
+/** Rezepte, deren Löschen noch rückgängig gemacht werden kann. Die Liste blendet sie schon aus. */
+export const pendingRecipeDeletes = new Set<number>();
+
 /** Lädt Daten, lädt beim Zurückkehren in die App neu und meldet Fehler. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[], reloadOnFocus = false) {
   const [data, setData] = useState<T | null>(null);
