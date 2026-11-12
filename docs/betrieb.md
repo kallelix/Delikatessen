@@ -114,7 +114,7 @@ Teilen, Push, Wake Lock und Offline lassen sich nur auf echten Android-Geräten 
 | AK-21 | `test_ak21_list_usable_without_bring`, `test_ak21_bring_offline_changes_nothing` | automatisch, plus Gerät |
 | AK-22 | 10 Testfotos | Gerät, kostet KI-Budget |
 | AK-23 | `test_ak23_text_import_ends_in_preview`, Playwright „Text aus Diktat …“ | automatisch mit KI-Attrappe, plus Gerät |
-| AK-24 | `delikatessen ki-pruefen` | Gateway mit Nachbau der Anthropic-API geprüft, echter Lauf offen |
+| AK-24 | `delikatessen ki-pruefen` | Erfüllt am 12.11.2026 mit der echten API |
 | AK-25 | `test_ak25_budget_exhausted`, lokaler Test gegen LiteLLM (HTTP 422) | automatisch, plus Gerät |
 | AK-26 | `test_ak26_thursday_run_creates_draft_and_notifies` | automatisch, plus Gerät |
 | AK-27 | `test_ak27_journal_finds_all_dates`, `test_ak27_past_week_readonly_but_rateable` | automatisch, plus Gerät |
@@ -180,7 +180,7 @@ sudo systemd-run --pipe --wait -p User=delikatessen -p EnvironmentFile=/etc/deli
   /opt/delikatessen/current/venv/bin/delikatessen ki-pruefen
 ```
 
-Der Befehl schickt ein kurzes Beispielrezept durch das Gateway und meldet „AK-24 erfüllt“, wenn die Antwort im festgelegten Schema ankommt. Mit einem Nachbau der Anthropic-API wurde schon geprüft, dass LiteLLM v1.108.5 `output_config` samt Schema unverändert weiterreicht. Offen ist nur, ob die echte API die Anfrage so annimmt: Das Gateway setzt zusätzlich den Header `anthropic-beta: structured-outputs-2025-11-13`. Scheitert die Prüfung, in `/etc/delikatessen/env` `DELIKATESSEN_KI_STRUCTURED=none` setzen. Dann steht das Schema im Prompt, und die App prüft jede Antwort selbst.
+Der Befehl schickt ein kurzes Beispielrezept durch das Gateway und meldet „AK-24 erfüllt“, wenn die Antwort im festgelegten Schema ankommt. Mit LiteLLM v1.108.5 und der echten API am 12.11.2026 erfüllt (ein Aufruf etwa 1,5 Cent). Die Kosten bucht das Gateway mit etwa einer Minute Verzögerung, direkt nach dem ersten Aufruf zeigt `ki-pruefen` deshalb noch „Budget: 0.00“. Scheitert die Prüfung nach einem Update von Gateway oder Modell, in `/etc/delikatessen/env` `DELIKATESSEN_KI_STRUCTURED=none` setzen. Dann steht das Schema im Prompt, und die App prüft jede Antwort selbst.
 
 | Thema | Festlegung |
 | --- | --- |
@@ -217,7 +217,7 @@ Ganz vergangene Wochen sind nur lesbar (D-JOUR). Wertungen und „nicht gekocht�
 
 - [ ] Bring!: Einkaufsliste senden, in der Bring!-App erscheinen alle Einträge mit Menge. Erneut senden erzeugt keine Dubletten (AK-20)
 - [ ] Bring! in den Einstellungen abschalten, die Einkaufsliste bleibt vollständig nutzbar (AK-21)
-- [ ] `delikatessen ki-pruefen` meldet „AK-24 erfüllt“ (AK-24)
+- [x] `delikatessen ki-pruefen` meldet „AK-24 erfüllt“ (AK-24)
 - [ ] 10 Testfotos, davon 3 handschriftlich: mindestens 8 nach höchstens drei Korrekturen speicherbar (AK-22)
 - [ ] Rezept per Diktierknopf und per Mikrofon der Tastatur eingeben, beide ergeben eine Vorschau (AK-23)
 - [ ] Budget im Gateway kurz auf 0 setzen: die App zeigt den Hinweis, Link-Import und Plan gehen weiter (AK-25)
