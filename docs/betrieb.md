@@ -228,6 +228,9 @@ Ganz vergangene Wochen sind nur lesbar (D-JOUR). Wertungen und „nicht gekocht�
 - [ ] Bring! in den Einstellungen abschalten, die Einkaufsliste bleibt vollständig nutzbar (AK-21)
 - [x] `delikatessen ki-pruefen` meldet „AK-24 erfüllt“ (AK-24)
 - [ ] 10 Testfotos, davon 3 handschriftlich: mindestens 8 nach höchstens drei Korrekturen speicherbar (AK-22)
+- [ ] Kochbuchseite mit Foto des Gerichts: Das Gerichtsbild erscheint in der Vorschau und wird Rezeptbild, auch wenn das Foto verdreht aufgenommen wurde
+- [ ] Verdreht aufgenommenes Foto lässt sich vor dem Auswerten mit ↻ drehen
+- [ ] Rezept bearbeiten: „Aufnehmen“ öffnet die Kamera, „Aus Galerie“ die Galerie
 - [ ] Rezept per Diktierknopf und per Mikrofon der Tastatur eingeben, beide ergeben eine Vorschau (AK-23)
 - [ ] Budget im Gateway kurz auf 0 setzen: die App zeigt den Hinweis, Link-Import und Plan gehen weiter (AK-25)
 - [ ] Benachrichtigungen auf jedem Familiengerät einschalten, „Jetzt ausprobieren“ bringt die Nachricht auf alle Geräte (AK-26)

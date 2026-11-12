@@ -37,13 +37,24 @@ def save_image(data: bytes, image_dir: Path) -> str:
 KI_MAX_EDGE = 1568
 
 
-def prepare_for_ki(data: bytes) -> bytes:
-    """Foto für den KI-Import: gedreht, verkleinert, als JPEG neu kodiert und damit ohne EXIF (N-11)."""
+ROTATIONS = (0, 90, 180, 270)
+
+
+def prepare_for_ki(data: bytes, rotation: int = 0) -> bytes:
+    """Foto für den KI-Import: gedreht, verkleinert, als JPEG neu kodiert und damit ohne EXIF (N-11).
+
+    rotation: zusätzliche Drehung im Uhrzeigersinn, die in der App gewählt wurde. Fotos von oben auf ein
+    flach liegendes Buch speichert das Handy oft mit falscher Lage.
+    """
     if len(data) > MAX_UPLOAD:
         raise ImageError("Das Bild ist zu groß")
+    if rotation not in ROTATIONS:
+        raise ImageError("Ungültige Drehung")
     try:
         with Image.open(io.BytesIO(data)) as img:
             img = ImageOps.exif_transpose(img)
+            if rotation:
+                img = img.rotate(-rotation, expand=True)
             img.thumbnail((KI_MAX_EDGE, KI_MAX_EDGE))
             img = img.convert("RGB")
             out = io.BytesIO()
@@ -51,6 +62,40 @@ def prepare_for_ki(data: bytes) -> bytes:
             return out.getvalue()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as e:
         raise ImageError("Die Datei ist kein lesbares Bild") from e
+
+
+# Kleiner als das ist kein brauchbares Rezeptbild, eher eine Fehlangabe der KI
+MIN_CROP_EDGE = 200
+
+
+def crop_dish(data: bytes, box: tuple[int, int, int, int], rotation: int, image_dir: Path) -> str | None:
+    """Schneidet das Gerichtsbild aus einem Foto (Rand in Promille) und speichert es wie ein Rezeptfoto.
+
+    None, wenn der Rand unbrauchbar ist. Etwas Luft am Rand gleicht ungenaue Angaben der KI aus.
+    """
+    left, top, right, bottom = (max(0, min(1000, v)) for v in box)
+    if right - left < 50 or bottom - top < 50 or rotation not in ROTATIONS:
+        return None
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            w, h = img.size
+            pad = 0.01
+            area = (
+                round(max(0.0, left / 1000 - pad) * w),
+                round(max(0.0, top / 1000 - pad) * h),
+                round(min(1.0, right / 1000 + pad) * w),
+                round(min(1.0, bottom / 1000 + pad) * h),
+            )
+            if min(area[2] - area[0], area[3] - area[1]) < MIN_CROP_EDGE:
+                return None
+            part = img.crop(area)
+            if rotation:
+                part = part.rotate(-rotation, expand=True)
+            out = io.BytesIO()
+            part.convert("RGB").save(out, "PNG")
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        return None
+    return save_image(out.getvalue(), image_dir)
 
 
 def delete_image(name: str | None, image_dir: Path) -> None:

@@ -20,13 +20,16 @@ const MAX_WAIT_MS = 75_000;
 const MAX_WAIT_KI_MS = 240_000;
 const MAX_PHOTOS = 4;
 
+/** Foto vor dem Hochladen. rot: in der App gewählte Drehung im Uhrzeigersinn. */
+type Photo = { file: File; rot: number };
+
 /** Neues Rezept: Link, Teilen-Menü, Foto, Text oder Diktat, oder von Hand. Jeder Import endet in der Vorschau. */
 export function Neu() {
   const [params, setParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>({ kind: "start" });
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
-  const [photos, setPhotos] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const status = useLoad(() => api.status(), []);
   const navigate = useNavigate();
   const toast = useToast();
@@ -50,7 +53,7 @@ export function Neu() {
       // ohne Link: Fotos und Text liest die KI, falls eingerichtet
       const st = await api.status().catch(() => null);
       const kiOn = !!st?.dienste.ki?.aktiv;
-      if (shared.images.length && kiOn) return void importPhotos(shared.images);
+      if (shared.images.length && kiOn) return void importPhotos(shared.images.map((file) => ({ file, rot: 0 })));
       if (shared.text.trim() && kiOn) return void importText(shared.text);
       const reason = st?.dienste.ki?.hinweis ? ` (KI: ${st.dienste.ki.hinweis})` : "";
       setMode({
@@ -102,10 +105,10 @@ export function Neu() {
 
   const importLink = (link: string) => runJob(link, () => api.startImport(link), link, kiReady ? MAX_WAIT_KI_MS : MAX_WAIT_MS);
   const importText = (t: string) => runJob("Text wird ausgewertet", () => api.startTextImport(t), null, MAX_WAIT_KI_MS);
-  const importPhotos = (files: File[]) =>
+  const importPhotos = (list: Photo[]) =>
     runJob(
-      files.length > 1 ? `${files.length} Fotos werden ausgewertet` : "Foto wird ausgewertet",
-      () => api.startPhotoImport(files),
+      list.length > 1 ? `${list.length} Fotos werden ausgewertet` : "Foto wird ausgewertet",
+      () => api.startPhotoImport(list),
       null,
       MAX_WAIT_KI_MS,
     );
@@ -127,7 +130,10 @@ export function Neu() {
 
   function addPhotos(list: FileList | null) {
     if (!list) return;
-    const next = [...photos, ...Array.from(list).filter((f) => f.type.startsWith("image/"))];
+    const added = Array.from(list)
+      .filter((f) => f.type.startsWith("image/"))
+      .map((file) => ({ file, rot: 0 }));
+    const next = [...photos, ...added];
     if (next.length > MAX_PHOTOS) toast.show(`Höchstens ${MAX_PHOTOS} Fotos je Rezept`, { error: true });
     setPhotos(next.slice(0, MAX_PHOTOS));
   }
@@ -235,11 +241,20 @@ export function Neu() {
         </h2>
         {photos.length > 0 && (
           <ul className="photo-strip">
-            {photos.map((f, i) => (
+            {photos.map((p, i) => (
               <li key={i}>
-                <Thumb file={f} alt={`Foto ${i + 1}`} />
+                <Thumb file={p.file} rot={p.rot} alt={`Foto ${i + 1}`} />
                 <button type="button" className="icon-btn" aria-label={`Foto ${i + 1} entfernen`} onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>
                   <Icon name="x" size={18} />
+                </button>
+                {/* Fotos von oben auf ein flaches Buch speichert das Handy oft verdreht */}
+                <button
+                  type="button"
+                  className="icon-btn rotate"
+                  aria-label={`Foto ${i + 1} drehen`}
+                  onClick={() => setPhotos(photos.map((q, j) => (j === i ? { ...q, rot: (q.rot + 90) % 360 } : q)))}
+                >
+                  <span aria-hidden="true">↻</span>
                 </button>
               </li>
             ))}
@@ -275,7 +290,9 @@ export function Neu() {
             />
           </label>
         </div>
-        <p className="muted small">Bis zu {MAX_PHOTOS} Fotos, etwa Zutaten und Zubereitung auf zwei Seiten.</p>
+        <p className="muted small">
+          Bis zu {MAX_PHOTOS} Fotos, etwa Zutaten und Zubereitung auf zwei Seiten. Ein Foto des Gerichts im Kochbuch wird zum Rezeptbild. Liegt ein Foto schief, mit ↻ drehen.
+        </p>
         <button type="button" className="btn primary" disabled={!kiReady || photos.length === 0} onClick={() => importPhotos(photos)}>
           Fotos auswerten
         </button>
@@ -298,14 +315,16 @@ export function Neu() {
   );
 }
 
-function Thumb({ file, alt }: { file: File; alt: string }) {
+function Thumb({ file, rot, alt }: { file: File; rot: number; alt: string }) {
   const [src, setSrc] = useState<string>();
   useEffect(() => {
     const u = URL.createObjectURL(file);
     setSrc(u);
     return () => URL.revokeObjectURL(u);
   }, [file]);
-  return src ? <img src={src} alt={alt} /> : null;
+  // quer gedreht etwas größer, damit der hochkante Rahmen gefüllt bleibt
+  const style = rot ? { transform: `rotate(${rot}deg)${rot % 180 ? " scale(1.34)" : ""}` } : undefined;
+  return src ? <img src={src} alt={alt} style={style} /> : null;
 }
 
 async function readShared(): Promise<{ title: string; text: string; url: string; images: File[] } | null> {

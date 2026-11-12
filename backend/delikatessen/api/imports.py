@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+import shutil
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .. import ki
 from ..config import Settings
-from ..images import MAX_UPLOAD, ImageError, prepare_for_ki, save_image
-from ..importer import download_image, photo_dir
+from ..images import MAX_UPLOAD, ROTATIONS, ImageError, prepare_for_ki, save_image
+from ..importer import dish_image, download_image, photo_dir
 from ..models import ImportJob
 from .deps import get_db, get_settings
 from .recipes import create_recipe, detail
@@ -61,18 +64,24 @@ def post_import(
 async def post_photo_import(
     request: Request,
     bilder: list[UploadFile] = File(...),
+    drehung: list[int] = Form(default=[]),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    """Bis zu vier Fotos eines Rezepts (D-FOTO). Sie liegen nur bis zur Auswertung auf dem Server."""
+    """Bis zu vier Fotos eines Rezepts (D-FOTO). Sie liegen nur bis zur Auswertung auf dem Server.
+
+    drehung: je Foto die in der App gewählte Drehung im Uhrzeigersinn (0, 90, 180, 270), optional.
+    """
     require_ki(settings)
     if not 1 <= len(bilder) <= MAX_PHOTOS:
         raise HTTPException(422, f"Bitte ein bis {MAX_PHOTOS} Fotos")
+    if drehung and (len(drehung) != len(bilder) or any(d not in ROTATIONS for d in drehung)):
+        raise HTTPException(422, "Ungültige Drehung der Fotos")
     prepared = []
-    for f in bilder:
+    for i, f in enumerate(bilder):
         raw = await f.read(MAX_UPLOAD + 1)
         try:
-            prepared.append(await run_in_threadpool(prepare_for_ki, raw))
+            prepared.append(await run_in_threadpool(prepare_for_ki, raw, drehung[i] if drehung else 0))
         except ImageError as e:
             raise HTTPException(422, str(e)) from e
     job = ImportJob(kind="foto", source=f"{len(prepared)} Foto{'s' if len(prepared) > 1 else ''}", status="wartet")
@@ -94,6 +103,15 @@ def get_import(job_id: int, db: Session = Depends(get_db)):
     return job_out(job)
 
 
+@router.get("/imports/{job_id}/bild")
+def get_dish_image(job_id: int, settings: Settings = Depends(get_settings)):
+    """Aus den Fotos ausgeschnittenes Gerichtsbild für die Vorschau."""
+    path = dish_image(settings, job_id)
+    if path is None:
+        raise HTTPException(404, "Bild nicht gefunden")
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "no-store"})
+
+
 @router.post("/imports/{job_id}/accept", response_model=RecipeOut, status_code=201)
 def accept_import(
     job_id: int, data: ImportAccept, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)
@@ -105,7 +123,13 @@ def accept_import(
     if job.status not in ("fertig", "ohne_schema", "fehler"):
         raise HTTPException(409, "Der Import ist noch nicht fertig oder schon übernommen")
     recipe = create_recipe(db, data.recipe)
-    if data.image_url:
+    local = dish_image(settings, job_id)
+    if data.image_url and local is not None and data.image_url == (job.result or {}).get("image_url"):
+        # Gerichtsbild aus den Fotos: liegt schon fertig verkleinert als WebP vor
+        settings.image_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(local, settings.image_dir / local.name)
+        recipe.image = local.name
+    elif data.image_url:
         raw = download_image(data.image_url, settings)
         if raw:
             try:
@@ -115,4 +139,6 @@ def accept_import(
     job.status = "uebernommen"
     job.recipe_id = recipe.id
     db.commit()
+    if job.kind == "foto":
+        shutil.rmtree(photo_dir(settings, job_id), ignore_errors=True)
     return detail(recipe, None)

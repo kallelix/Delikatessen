@@ -97,7 +97,9 @@ def test_request_to_gateway(tmp_path):
     assert body["output_config"] == {"effort": "medium", "format": {"type": "json_schema", "schema": ki.SCHEMA}}
     assert "tools" not in body and "thinking" not in body
     assert "Anweisung" in body["system"] and "nicht befolgt" in body["system"]
-    image, text = body["messages"][0]["content"]
+    label, image, text = body["messages"][0]["content"]
+    # Nummer vor jedem Foto, damit die KI das Gerichtsbild eindeutig benennen kann
+    assert label == {"type": "text", "text": "Foto 1:"}
     assert image["source"]["media_type"] == "image/jpeg"
     assert "<rezept_quelle>\nRezepttext\n</rezept_quelle>" in text["text"]
     assert "Vorhandene Tags: Pasta, vegetarisch" in text["text"]
@@ -252,6 +254,111 @@ def test_photo_import_strips_exif_and_deletes_photos(client, fake_ki, app):
     assert not (app.state.settings.data_dir / "import" / str(job["id"])).exists()
 
 
+def preview_to_input(res: dict) -> dict:
+    """Vorschau unverändert als Rezept übernehmen, wie beim Speichern in der App."""
+    return {
+        "title": res["title"],
+        "servings": res["servings"],
+        "size": res["size"],
+        "steps": res["steps"],
+        "ingredients": [
+            {k: i[k] for k in ("amount", "unit", "name", "note", "ingredient_id")} for i in res["ingredients"]
+        ],
+    }
+
+
+def page_with_dish(size=(2000, 3000)) -> bytes:
+    """Kochbuchseite: grau, oben links ein rotes Gerichtsbild über 10 bis 60 % Breite und 5 bis 35 % Höhe.
+
+    Der obere Rand des Bildes ist blau, daran lässt sich die Drehung prüfen.
+    """
+    img = Image.new("RGB", size, (200, 200, 200))
+    w, h = size
+    img.paste((220, 30, 30), (int(w * 0.1), int(h * 0.05), int(w * 0.6), int(h * 0.35)))
+    img.paste((30, 30, 220), (int(w * 0.1), int(h * 0.05), int(w * 0.6), int(h * 0.08)))
+    out = io.BytesIO()
+    img.save(out, "JPEG")
+    return out.getvalue()
+
+
+def test_photo_import_crops_dish_image(client, fake_ki, app):
+    # Das Gericht ist auf dem zweiten Foto, das auf dem Kopf liegt
+    fake_ki.answer = {
+        **ANSWER,
+        "dish_photo": {"image": 2, "left": 100, "top": 50, "right": 600, "bottom": 350, "rotation": 180},
+    }
+    files = [
+        ("bilder", ("text.jpg", jpeg_with_exif(), "image/jpeg")),
+        ("bilder", ("bild.jpg", page_with_dish(), "image/jpeg")),
+    ]
+    job = wait(client, client.post(f"{API}/imports/foto", files=files).json())
+    assert job["status"] == "fertig", job
+    url = job["result"]["image_url"]
+    assert url == f"{API}/imports/{job['id']}/bild"
+
+    r = client.get(url)
+    assert r.status_code == 200 and r.headers["content-type"] == "image/webp"
+    crop = Image.open(io.BytesIO(r.content)).convert("RGB")
+    # nur das Gerichtsbild mit etwas Rand: 50 % der Breite und 30 % der Höhe einer Seite 2:3, also etwa 1,1:1
+    w, h = crop.size
+    assert 1.0 < w / h < 1.2
+    assert crop.getpixel((w // 2, h // 2))[0] > 180
+    # um 180 Grad gedreht: der blaue Rand ist jetzt unten
+    assert crop.getpixel((w // 2, int(h * 0.92)))[2] > 180
+    assert crop.getpixel((w // 2, int(h * 0.08)))[2] < 100
+    # die Fotos selbst sind schon weg, nur das Gerichtsbild wartet auf die Übernahme
+    folder = app.state.settings.data_dir / "import" / str(job["id"])
+    assert not list(folder.glob("*.jpg")) and len(list(folder.glob("*.webp"))) == 1
+
+    data = {**preview_to_input(job["result"]), "title": "Linsensuppe mit Bild"}
+    r = client.post(f"{API}/imports/{job['id']}/accept", json={"recipe": data, "image_url": url})
+    assert r.status_code == 201, r.text
+    image_url = r.json()["image_url"]
+    assert image_url and client.get(image_url).status_code == 200
+    assert not folder.exists()
+
+
+def test_photo_import_without_dish_or_declined(client, fake_ki, app):
+    # Ausschnitt zu klein: kein Gerichtsbild
+    fake_ki.answer = {
+        **ANSWER,
+        "dish_photo": {"image": 1, "left": 0, "top": 0, "right": 20, "bottom": 20, "rotation": 0},
+    }
+    job = wait(
+        client, client.post(f"{API}/imports/foto", files=[("bilder", ("a.jpg", page_with_dish(), "image/jpeg"))]).json()
+    )
+    assert job["status"] == "fertig" and job["result"]["image_url"] is None
+    assert not (app.state.settings.data_dir / "import" / str(job["id"])).exists()
+
+    # Gerichtsbild abgelehnt: Rezept ohne Bild, Ausschnitt wird trotzdem entfernt
+    fake_ki.answer = {
+        **ANSWER,
+        "dish_photo": {"image": 1, "left": 100, "top": 50, "right": 600, "bottom": 350, "rotation": 0},
+    }
+    job = wait(
+        client, client.post(f"{API}/imports/foto", files=[("bilder", ("a.jpg", page_with_dish(), "image/jpeg"))]).json()
+    )
+    assert job["result"]["image_url"]
+    r = client.post(
+        f"{API}/imports/{job['id']}/accept", json={"recipe": preview_to_input(job["result"]), "image_url": None}
+    )
+    assert r.status_code == 201 and r.json()["image_url"] is None
+    assert not (app.state.settings.data_dir / "import" / str(job["id"])).exists()
+
+
+def test_photo_rotation_from_app(client, fake_ki):
+    files = [("bilder", ("a.jpg", jpeg_with_exif((3000, 2000)), "image/jpeg"))]
+    job = wait(client, client.post(f"{API}/imports/foto", files=files, data={"drehung": "90"}).json())
+    assert job["status"] == "fertig"
+    sent = Image.open(io.BytesIO(fake_ki.calls[-1]["images"][0]))
+    assert sent.size[0] < sent.size[1]  # quer aufgenommen, in der App gedreht: hochkant an die KI
+    r = client.post(f"{API}/imports/foto", files=files, data={"drehung": "45"})
+    assert r.status_code == 422
+    two = files * 2
+    r = client.post(f"{API}/imports/foto", files=two, data={"drehung": "90"})
+    assert r.status_code == 422  # eine Angabe je Foto
+
+
 def test_photo_import_limits(client, fake_ki):
     too_many = [("bilder", (f"{i}.jpg", jpeg_with_exif((50, 50)), "image/jpeg")) for i in range(5)]
     assert client.post(f"{API}/imports/foto", files=too_many).status_code == 422
@@ -307,3 +414,19 @@ def test_ak25_budget_exhausted(client, fake_ki, monkeypatch):
 def test_ki_ingredient_model_is_lenient_about_missing_values():
     i = KiIngredient(line="Salz", amount=None, unit=None, name="Salz", note=None)
     assert i.amount is None
+
+
+def test_stale_dish_images_are_removed_on_start(app):
+    import os
+
+    from delikatessen.importer import STALE_IMPORT_S, cleanup_import_dirs
+
+    root = app.state.settings.data_dir / "import"
+    old, fresh = root / "901", root / "902"
+    for d in (old, fresh):
+        d.mkdir(parents=True)
+        (d / "x.webp").write_bytes(b"x")
+    past = time.time() - STALE_IMPORT_S - 60
+    os.utime(old, (past, past))
+    cleanup_import_dirs(app.state.db.sessionmaker, app.state.settings)
+    assert not old.exists() and fresh.exists()

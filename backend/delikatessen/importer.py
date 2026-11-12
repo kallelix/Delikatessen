@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import shutil
+import time
 from concurrent.futures import ThreadPoolExecutor
 from html import unescape
 from pathlib import Path
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .catalog import Matcher
 from .config import Settings
+from .images import crop_dish
 from .ki import KiClient, KiError, KiRecipe
 from .models import ImportJob, Tag
 from .netguard import FetchError, fetch
@@ -201,6 +203,19 @@ def photo_dir(settings: Settings, job_id: int) -> Path:
     return settings.data_dir / "import" / str(job_id)
 
 
+def dish_image(settings: Settings, job_id: int) -> Path | None:
+    """Ausgeschnittenes Gerichtsbild eines Foto-Imports, bis es übernommen oder verworfen ist."""
+    folder = photo_dir(settings, job_id)
+    return next(iter(sorted(folder.glob("*.webp"))), None) if folder.is_dir() else None
+
+
+def _crop_dish(recipe: KiRecipe, images: list[bytes], folder: Path) -> bool:
+    d = recipe.dish_photo
+    if d is None or not 1 <= d.image <= len(images):
+        return False
+    return crop_dish(images[d.image - 1], (d.left, d.top, d.right, d.bottom), d.rotation, folder) is not None
+
+
 def _ki_recipe(session: Session, ki: KiClient, *, text: str | None = None, images: list[bytes] = ()) -> KiRecipe:
     tag_names = list(session.scalars(select(Tag.name).order_by(Tag.name)))
     recipe = ki.extract(text=text, images=images, tag_names=tag_names)
@@ -246,6 +261,8 @@ def run_job(sm: sessionmaker, settings: Settings, job_id: int, ki_factory=None) 
                     raise KiError("Die Fotos sind nicht mehr da, bitte erneut aufnehmen")
                 recipe = _ki_recipe(session, ki_factory(settings), images=images)
                 job.status, job.result = "fertig", ki_preview(session, recipe)
+                if _crop_dish(recipe, images, folder):
+                    job.result = {**job.result, "image_url": f"/api/v1/imports/{job_id}/bild"}
             else:
                 job.status, job.error = "fehler", "Unbekannte Importart"
         except (FetchError, KiError) as e:
@@ -254,9 +271,28 @@ def run_job(sm: sessionmaker, settings: Settings, job_id: int, ki_factory=None) 
             log.exception("Import %s fehlgeschlagen", job_id)
             job.status, job.error = "fehler", "Unerwarteter Fehler beim Import"
         if job.kind == "foto":
-            # Fotos liegen nur bis zur Auswertung auf dem Server
-            shutil.rmtree(photo_dir(settings, job_id), ignore_errors=True)
+            # Fotos liegen nur bis zur Auswertung auf dem Server, das Gerichtsbild bis zur Übernahme
+            folder = photo_dir(settings, job_id)
+            for p in folder.glob("*.jpg"):
+                p.unlink(missing_ok=True)
+            if dish_image(settings, job_id) is None:
+                shutil.rmtree(folder, ignore_errors=True)
         session.commit()
+
+
+# Nicht übernommene Gerichtsbilder werden nach dieser Zeit beim Start entfernt
+STALE_IMPORT_S = 7 * 24 * 3600
+
+
+def cleanup_import_dirs(sm: sessionmaker, settings: Settings) -> None:
+    root = settings.data_dir / "import"
+    if not root.is_dir():
+        return
+    with sm() as session:
+        busy = {str(i) for i in session.scalars(select(ImportJob.id).where(ImportJob.status.in_(("wartet", "laeuft"))))}
+    for folder in root.iterdir():
+        if folder.is_dir() and folder.name not in busy and time.time() - folder.stat().st_mtime > STALE_IMPORT_S:
+            shutil.rmtree(folder, ignore_errors=True)
 
 
 class ImportRunner:
@@ -270,6 +306,7 @@ class ImportRunner:
         self.pool.submit(run_job, self.sm, self.settings, job_id, self.ki_factory)
 
     def resume_pending(self) -> None:
+        cleanup_import_dirs(self.sm, self.settings)
         with self.sm() as session:
             ids = session.scalars(select(ImportJob.id).where(ImportJob.status.in_(("wartet", "laeuft"))))
             for job_id in ids:

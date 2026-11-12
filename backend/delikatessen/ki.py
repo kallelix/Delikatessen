@@ -56,6 +56,17 @@ class KiIngredient(BaseModel):
     note: str | None
 
 
+class KiDishPhoto(BaseModel):
+    """Wo auf den Fotos das fertige Gericht abgebildet ist (Bild im Kochbuch). Rand in Promille des Fotos."""
+
+    image: int
+    left: int
+    top: int
+    right: int
+    bottom: int
+    rotation: Literal[0, 90, 180, 270]
+
+
 class KiRecipe(BaseModel):
     found: bool
     title: str | None
@@ -65,6 +76,7 @@ class KiRecipe(BaseModel):
     steps: list[str]
     tags: list[str]
     ingredients: list[KiIngredient]
+    dish_photo: KiDishPhoto | None = None
 
 
 def _nullable(t: str) -> dict:
@@ -97,8 +109,26 @@ SCHEMA: dict = {
                 "additionalProperties": False,
             },
         },
+        "dish_photo": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "image": {"type": "integer"},
+                        "left": {"type": "integer"},
+                        "top": {"type": "integer"},
+                        "right": {"type": "integer"},
+                        "bottom": {"type": "integer"},
+                        "rotation": {"type": "integer", "enum": [0, 90, 180, 270]},
+                    },
+                    "required": ["image", "left", "top", "right", "bottom", "rotation"],
+                    "additionalProperties": False,
+                },
+                {"type": "null"},
+            ]
+        },
     },
-    "required": ["found", "title", "servings", "duration_min", "size", "steps", "tags", "ingredients"],
+    "required": ["found", "title", "servings", "duration_min", "size", "steps", "tags", "ingredients", "dish_photo"],
     "additionalProperties": False,
 }
 
@@ -121,6 +151,11 @@ Regeln:
   - unit: Einheit in kurzer Form, etwa g, kg, ml, l, EL, TL, Stück, Prise, Bund, Dose, Packung, Zehe, Scheibe, Becher. null, wenn keine.
   - name: die Zutat im Singular oder in der üblichen Handelsform, ohne Menge und ohne Zubereitungsangaben, etwa "Zwiebel", "Mehl", "Passierte Tomaten".
   - note: Zubereitung oder Zusatz wie "gehackt", "Type 405", "optional". Sonst null.
+- dish_photo: nur bei Fotos. Zeigt eines der Fotos ein Bild des fertigen Gerichts, etwa das Foto neben dem Rezept im Kochbuch, dann:
+  - image: Nummer des Fotos, 1 für das erste.
+  - left, top, right, bottom: Ränder des Gerichtsbilds in Promille von Breite und Höhe des Fotos, so wie es übermittelt ist (0 bis 1000, 0/0 ist oben links). Nur das Bild selbst, ohne Text und Seitenrand.
+  - rotation: Drehung im Uhrzeigersinn in Grad, die das Gerichtsbild aufrecht stellt: 0, 90, 180 oder 270. Liegt das Foto auf dem Kopf, 180.
+  Sonst null, auch bei Text, Diktat und Webseiten. Text, Zutatenlisten, Schrittfotos und Zeichnungen sind kein Gerichtsbild. Gibt es mehrere, das größte.
 - Schreibe auf Deutsch, auch wenn die Quelle eine andere Sprache hat. Mengen und Einheiten dabei nicht umrechnen."""
 
 
@@ -141,17 +176,20 @@ class KiClient:
         )
 
     def extract(self, *, text: str | None = None, images: list[bytes] = (), tag_names: list[str] = ()) -> KiRecipe:
-        content: list[dict] = [
-            {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": base64.standard_b64encode(img).decode(),
-                },
-            }
-            for img in images
-        ]
+        content: list[dict] = []
+        for n, img in enumerate(images, 1):
+            # Nummer vor jedem Foto, damit dish_photo.image eindeutig ist
+            content.append({"type": "text", "text": f"Foto {n}:"})
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64.standard_b64encode(img).decode(),
+                    },
+                }
+            )
         parts = [f"Vorhandene Tags: {', '.join(tag_names) if tag_names else 'keine'}"]
         if images:
             parts.append(f"Lies das Rezept aus {'dem Foto' if len(images) == 1 else f'den {len(images)} Fotos'}.")

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { errorText, useLoad } from "../lib";
 import { formatNumber, parseAmount, UNITS } from "../units";
@@ -74,10 +74,17 @@ export function RecipeForm({
   const [image, setImage] = useState<File | null>(initialImage ?? null);
   const [useRemote, setUseRemote] = useState(!!remoteImage);
   const [removeImage, setRemoveImage] = useState(false);
+  const fromPhoto = !!remoteImage?.startsWith("/api/");
   const [newTag, setNewTag] = useState("");
   const [picking, setPicking] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function pick(input: HTMLInputElement) {
+    const f = input.files?.[0];
+    if (f) setImage(f);
+    input.value = "";
+  }
   const tags = useLoad(() => api.tags(), []);
 
   const open = rows.filter((r) => r.name.trim() && !r.ingredient_id).length;
@@ -258,10 +265,12 @@ export function RecipeForm({
 
       <fieldset className="field">
         <legend>Foto</legend>
+        {/* Gerichtsbild aus den Fotos liegt auf dem eigenen Server und wird gezeigt, fremde Bilder nicht */}
+        {remoteImage && fromPhoto && !image && useRemote && <img className="form-thumb" src={remoteImage} alt="Bild aus dem Foto" />}
         {remoteImage && !image && (
           <label className="check">
             <input type="checkbox" checked={useRemote} onChange={(e) => setUseRemote(e.target.checked)} />
-            Bild der Seite übernehmen
+            {fromPhoto ? "Bild aus dem Foto übernehmen" : "Bild der Seite übernehmen"}
           </label>
         )}
         {currentImage && !image && !removeImage && <img className="form-thumb" src={currentImage} alt="Aktuelles Foto" />}
@@ -271,10 +280,23 @@ export function RecipeForm({
             Foto entfernen
           </label>
         )}
-        <label className="btn file-btn">
-          <Icon name="kamera" /> {image ? image.name || "Foto gewählt" : "Foto aufnehmen oder wählen"}
-          <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
-        </label>
+        {image && <FilePreview file={image} />}
+        {/* getrennt, weil ein einzelnes Dateifeld auf neueren Android-Versionen nur die Galerie öffnet */}
+        <div className="row2">
+          <label className="btn file-btn">
+            <Icon name="kamera" /> Aufnehmen
+            <input type="file" accept="image/*" capture="environment" onChange={(e) => pick(e.target)} />
+          </label>
+          <label className="btn file-btn">
+            Aus Galerie
+            <input type="file" accept="image/*" onChange={(e) => pick(e.target)} />
+          </label>
+        </div>
+        {image && (
+          <button type="button" className="link-btn" onClick={() => setImage(null)}>
+            Gewähltes Foto verwerfen
+          </button>
+        )}
       </fieldset>
 
       <label className="field">
@@ -295,4 +317,14 @@ export function RecipeForm({
       </div>
     </form>
   );
+}
+
+function FilePreview({ file }: { file: File }) {
+  const [src, setSrc] = useState<string>();
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setSrc(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return src ? <img className="form-thumb" src={src} alt="Gewähltes Foto" /> : null;
 }

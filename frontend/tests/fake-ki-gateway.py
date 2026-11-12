@@ -44,16 +44,21 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": "unbekannt"}, 404)
 
     def do_POST(self):
-        self.rfile.read(int(self.headers.get("content-length", 0)))
+        raw = self.rfile.read(int(self.headers.get("content-length", 0)))
         if not self.path.startswith("/v1/messages"):
             return self._json({"error": "unbekannt"}, 404)
+        content = json.loads(raw or b"{}").get("messages", [{}])[0].get("content", [])
+        has_image = any(isinstance(c, dict) and c.get("type") == "image" for c in content)
+        # Bei Fotos: Gerichtsbild oben links auf dem ersten Foto, wie auf tests/kochbuchseite.jpg
+        dish = {"image": 1, "left": 100, "top": 50, "right": 600, "bottom": 350, "rotation": 0} if has_image else None
+        answer = {**ANSWER, "dish_photo": dish}
         self._json(
             {
                 "id": "msg_test",
                 "type": "message",
                 "role": "assistant",
                 "model": "rezept-extraktion",
-                "content": [{"type": "text", "text": json.dumps(ANSWER, ensure_ascii=False)}],
+                "content": [{"type": "text", "text": json.dumps(answer, ensure_ascii=False)}],
                 "stop_reason": "end_turn",
                 "stop_sequence": None,
                 "usage": {"input_tokens": 900, "output_tokens": 400},

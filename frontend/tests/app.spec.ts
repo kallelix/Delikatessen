@@ -254,6 +254,27 @@ test("AK-23: Text aus Diktat oder Einfügen endet in der Vorschau", async () => 
   await expect(page.getByRole("heading", { name: "Linsensuppe" })).toBeVisible();
 });
 
+test("Foto aus dem Kochbuch: drehen, Gerichtsbild wird Rezeptbild", async () => {
+  await page.goto("/neu");
+  await page.locator("input[type=file][multiple]").setInputFiles("tests/kochbuchseite.jpg");
+  const thumb = page.getByAltText("Foto 1");
+  await expect(thumb).toBeVisible();
+  // verdreht aufgenommene Fotos lassen sich vor dem Hochladen drehen
+  await page.getByRole("button", { name: "Foto 1 drehen" }).click();
+  await expect(thumb).toHaveAttribute("style", /rotate\(90deg\)/);
+  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Foto 1 drehen" }).click();
+  await expect(thumb).not.toHaveAttribute("style", /rotate/);
+  await page.getByRole("button", { name: "Fotos auswerten" }).click();
+  await expect(page.getByRole("heading", { name: "Import prüfen" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByAltText("Bild aus dem Foto")).toBeVisible();
+  await expect(page.getByLabel("Bild aus dem Foto übernehmen")).toBeChecked();
+  // eigenes Foto geht getrennt per Kamera oder aus der Galerie
+  await expect(page.getByText("Aufnehmen")).toBeVisible();
+  await shots("13-foto-gerichtsbild");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.locator("img.hero")).toBeVisible();
+});
+
 test("Status zeigt KI-Budget aus dem Gateway", async () => {
   await page.goto("/mehr");
   await expect(page.getByText("KI: aktiv, 0,42 von 5,00 USD diesen Monat")).toBeVisible();

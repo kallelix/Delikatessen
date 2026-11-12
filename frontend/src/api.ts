@@ -154,9 +154,13 @@ export const api = {
   // Import
   startImport: (url: string) => request<ImportJob>("POST", "/imports", { kind: "link", url }),
   startTextImport: (text: string) => request<ImportJob>("POST", "/imports", { kind: "text", text }),
-  startPhotoImport: (files: Blob[]) => {
+  startPhotoImport: (photos: { file: Blob; rot: number }[]) => {
     const fd = new FormData();
-    files.forEach((f, i) => fd.append("bilder", f, `foto-${i}.jpg`));
+    photos.forEach((p, i) => {
+      fd.append("bilder", p.file, `foto-${i}.jpg`);
+      // Drehung im Uhrzeigersinn je Foto, in derselben Reihenfolge
+      fd.append("drehung", String(p.rot));
+    });
     return request<ImportJob>("POST", "/imports/foto", fd);
   },
   importJob: (id: number) => request<ImportJob>("GET", `/imports/${id}`),

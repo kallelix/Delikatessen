@@ -1116,3 +1116,14 @@ label.btn.disabled {
 .badges + details {
   margin-top: 1rem;
 }
+.photo-strip li {
+  overflow: hidden;
+  border-radius: 8px;
+}
+.photo-strip .icon-btn.rotate {
+  top: auto;
+  right: auto;
+  bottom: 2px;
+  left: 2px;
+  font-size: 1.2rem;
+}
