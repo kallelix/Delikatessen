@@ -171,6 +171,8 @@ class PlanWeek(Base):
     start: Mapped[date] = mapped_column(Date, unique=True)  # immer ein Samstag
     version: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(String(12), default="entwurf")
+    # Zutaten, die diese Woche verbraucht werden sollen (D-ZUT), Bonus V im Planer
+    use_up: Mapped[list[int] | None] = mapped_column(JSON, default=list)
 
     slots: Mapped[list[PlanSlot]] = relationship(
         back_populates="week",
@@ -255,6 +257,19 @@ class ImportJob(Base):
     result: Mapped[dict | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(String(300))
     recipe_id: Mapped[int | None] = mapped_column(ForeignKey("recipe.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+
+
+class PushSubscription(Base):
+    """Web-Push-Abonnement eines Geräts (F-24). Die Nachricht enthält keine Rezeptdetails."""
+
+    __tablename__ = "push_subscription"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint: Mapped[str] = mapped_column(String(1000), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("person.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
 

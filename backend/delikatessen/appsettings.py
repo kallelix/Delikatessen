@@ -15,6 +15,9 @@ class Weights(BaseModel):
     L: float = Field(0.25, ge=0, le=5)
     T: float = Field(0.10, ge=0, le=5)
     A: float = Field(0.15, ge=0, le=5)
+    # Stufe 2: Bonus für "diese Woche verbrauchen" (D-ZUT) und für noch nie gekochte Gerichte
+    V: float = Field(0.30, ge=0, le=5)
+    N: float = Field(0.10, ge=0, le=5)
 
 
 class AppSettings(BaseModel):
@@ -37,7 +40,7 @@ class AppSettings(BaseModel):
         default_factory=lambda: {0: 45, 1: 45, 2: 45, 3: 45, 4: 45, 5: None, 6: None}
     )
     weights: Weights = Field(default_factory=Weights)
-    # Uhrzeit des automatischen Planvorschlags am Donnerstag (Stufe 2)
+    # Uhrzeit des automatischen Planvorschlags am Donnerstag (F-24)
     plan_time: str = Field("18:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
     @field_validator("grid")

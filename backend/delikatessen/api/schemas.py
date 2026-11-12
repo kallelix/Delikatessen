@@ -187,11 +187,20 @@ class SlotOut(BaseModel):
     ratings: dict[int, float]
 
 
+class UseUpItem(BaseModel):
+    id: int
+    name: str
+
+
 class PlanOut(BaseModel):
     start: date
     end: date
     version: int
     status: str
+    # ganz vergangene Woche: nur lesbar, Wertungen nachtragbar (D-JOUR)
+    readonly: bool = False
+    # diese Woche verbrauchen (D-ZUT)
+    use_up: list[UseUpItem] = []
     slots: list[SlotOut]
 
 
@@ -213,6 +222,10 @@ class SlotUpdate(Versioned):
     cancelled: bool | None = None
     not_cooked: bool | None = None
     swap_main: bool = False
+
+
+class UseUpIn(Versioned):
+    ingredient_ids: list[int] = Field(default_factory=list, max_length=30)
 
 
 class GenerateIn(BaseModel):
@@ -249,9 +262,34 @@ class RankingEntry(BaseModel):
     last_cooked: date | None
 
 
+class MonthDish(BaseModel):
+    recipe: RecipeSummary
+    monat: str  # JJJJ-MM
+    mittel: float
+    wertungen: int
+    laufend: bool  # True: aktueller Monat, kann sich noch ändern
+
+
+class NewDish(BaseModel):
+    recipe: RecipeSummary
+    erstmals: date
+
+
+class Badge(BaseModel):
+    name: str
+    beschreibung: str
+    ziel: int
+    stand: int
+    erreicht: bool
+
+
 class Rankings(BaseModel):
     ranking: list[RankingEntry]
     long_not_eaten: list[RankingEntry]
+    # D-RANK: Essen des Monats ab zwei Wertungen, neu ausprobierte Gerichte, Abzeichen der Familie
+    essen_des_monats: MonthDish | None = None
+    neu_ausprobiert: list[NewDish] = []
+    abzeichen: list[Badge] = []
 
 
 # --- Einkauf ---------------------------------------------------------------------------

@@ -5,6 +5,12 @@ test.describe.configure({ mode: "serial" });
 
 let context: BrowserContext;
 let page: Page;
+// Beginn der aktuellen Planwoche (Samstag), in lokaler Zeit
+function currentWeek(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 1) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 const shots = (name: string) => page.screenshot({ path: `test-results/screens/${name}.png`, fullPage: true });
 
 test.beforeAll(async ({ browser }, info) => {
@@ -202,9 +208,8 @@ test("AK-09: Plan und Rezepte der Woche ohne Netz lesbar", async () => {
 });
 
 test("Bewerten durch Eltern auch fürs Kind", async () => {
-  // Rezept auf einen vergangenen Platz der Vorwoche legen und dort bewerten
-  await page.goto("/");
-  await page.getByRole("button", { name: "Woche davor" }).click();
+  // Rezept auf den ersten Platz der laufenden Woche legen (Samstag, also schon vorbei) und dort bewerten
+  await page.goto(`/?woche=${currentWeek()}`);
   await page.locator(".slot.main").first().click();
   await page.getByRole("button", { name: "Rezept wählen" }).click();
   await page.getByRole("dialog").getByRole("button", { name: /Kartoffelgratin/ }).click();
@@ -252,4 +257,47 @@ test("AK-23: Text aus Diktat oder Einfügen endet in der Vorschau", async () => 
 test("Status zeigt KI-Budget aus dem Gateway", async () => {
   await page.goto("/mehr");
   await expect(page.getByText("KI: aktiv, 0,42 von 5,00 USD diesen Monat")).toBeVisible();
+});
+
+test("Zutatensuche: Rezepte nach Vorrat, an den Plan übergeben", async () => {
+  await page.goto("/rezepte");
+  await page.getByRole("link", { name: "Nach Zutaten suchen" }).click();
+  await page.getByLabel("Zutat hinzufügen").fill("Sahne");
+  await page.getByRole("option", { name: /Sahne/ }).first().getByRole("button").click();
+  await expect(page.locator(".hit-list li").first()).toContainText("Kartoffelgratin");
+  // ohne Neuanlage im Katalog
+  await page.getByLabel("Zutat hinzufügen").fill("Drachenfrucht");
+  await expect(page.getByText("neu im Katalog anlegen")).toHaveCount(0);
+  await shots("12-zutatensuche");
+  await page.getByRole("button", { name: /verbrauchen$/ }).click();
+  await expect(page.getByText("Diese Woche verbrauchen:")).toBeVisible();
+  await expect(page.locator(".use-up")).toContainText("Sahne");
+});
+
+test("Journal und Rangliste zeigen, was gekocht wurde", async () => {
+  await page.goto("/mehr/journal");
+  await expect(page.locator(".journal-entry").first()).toContainText("Kartoffelgratin");
+  await page.getByLabel("Journal durchsuchen").fill("gratin");
+  await expect(page.locator(".journal-entry")).toHaveCount(1);
+  await page.getByRole("button", { name: "mies" }).click();
+  await expect(page.getByText("Nichts gefunden.")).toBeVisible();
+  await page.goto("/mehr/rangliste");
+  await expect(page.getByText("Essen des Monats")).toBeVisible();
+  await expect(page.getByText("Erster Versuch")).toBeVisible();
+  await shots("13-rangliste");
+});
+
+test("Vergangene Woche ist nur lesbar", async () => {
+  const past = new Date(`${currentWeek()}T12:00:00`);
+  past.setDate(past.getDate() - 14);
+  const iso = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, "0")}-${String(past.getDate()).padStart(2, "0")}`;
+  await page.goto(`/?woche=${iso}`);
+  await expect(page.getByText("Vergangene Woche, nur zum Nachlesen")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Plan erzeugen" })).toHaveCount(0);
+});
+
+test("Benachrichtigungen lassen sich am Gerät einschalten", async () => {
+  await page.goto("/mehr");
+  await expect(page.getByRole("heading", { name: "Benachrichtigungen" })).toBeVisible();
+  await expect(page.getByText("Benachrichtigung, wenn der Wochenplan da ist")).toBeVisible();
 });

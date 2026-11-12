@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import __version__, appsettings, ki
+from .. import __version__, appsettings, ki, push
 from ..config import Settings
 from ..models import Ingredient, IngredientGroup, Person, PersonNoGo
 from .deps import current_person, get_db, get_settings, require_adult
@@ -114,8 +114,11 @@ def get_app_settings(db: Session = Depends(get_db)):
 
 
 @router.put("/settings", response_model=appsettings.AppSettings, dependencies=[Depends(require_adult)])
-def put_app_settings(data: appsettings.AppSettings, db: Session = Depends(get_db)):
-    return appsettings.save(db, data)
+def put_app_settings(data: appsettings.AppSettings, request: Request, db: Session = Depends(get_db)):
+    saved = appsettings.save(db, data)
+    # neue Uhrzeit gilt sofort für den Donnerstagslauf (F-24)
+    request.app.state.scheduler.reschedule(saved.plan_time)
+    return saved
 
 
 @router.get("/status")
@@ -129,6 +132,6 @@ def status(db: Session = Depends(get_db), settings: Settings = Depends(get_setti
         "dienste": {
             "bring": bring.status(db, settings),
             "ki": ki.status(settings),
-            "push": {"aktiv": False, "hinweis": "kommt mit Stufe 2"},
+            "push": push.status(db),
         },
     }

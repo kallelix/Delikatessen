@@ -13,6 +13,8 @@ from pathlib import Path
 
 from .config import get_settings
 
+VAPID_FILE = "vapid_private.pem"
+
 
 def cmd_serve(args) -> None:
     import uvicorn
@@ -56,6 +58,11 @@ def cmd_backup(args) -> None:
     with tarfile.open(dest / "bilder.tar", "w") as tar:
         if settings.image_dir.is_dir():
             tar.add(settings.image_dir, arcname="bilder")
+    # Schlüssel für Web Push: ohne ihn müssten sich alle Geräte nach einer Wiederherstellung neu anmelden
+    vapid = settings.data_dir / VAPID_FILE
+    if vapid.is_file():
+        shutil.copy2(vapid, dest / VAPID_FILE)
+        (dest / VAPID_FILE).chmod(0o600)
     backups = sorted(p for p in target.glob("delikatessen_*") if p.is_dir())
     for old in backups[: max(0, len(backups) - args.keep)]:
         shutil.rmtree(old)
@@ -79,6 +86,9 @@ def cmd_restore(args) -> None:
             shutil.rmtree(settings.image_dir)
         with tarfile.open(tar_path) as tar:
             _safe_extract(tar, settings.data_dir)
+    if (src / VAPID_FILE).is_file():
+        shutil.copy2(src / VAPID_FILE, settings.data_dir / VAPID_FILE)
+        (settings.data_dir / VAPID_FILE).chmod(0o600)
     print(f"Sicherung {src} nach {settings.data_dir} zurückgespielt")
 
 

@@ -44,7 +44,12 @@ export function Rezepte() {
 
   return (
     <section className="page">
-      <h1>Rezepte</h1>
+      <div className="page-head">
+        <h1>Rezepte</h1>
+        <Link className="link-btn" to="/rezepte/zutaten">
+          Nach Zutaten suchen
+        </Link>
+      </div>
       <div className="search">
         <Icon name="suche" />
         <input

@@ -1027,3 +1027,92 @@ label.btn.disabled {
     animation: none !important;
   }
 }
+
+/* Stufe 2: Zutatensuche, Journal, Rangliste */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.meter {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+  margin: 0 0.25rem 0.5rem;
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.card.use-up p {
+  margin: 0 0 0.25rem;
+}
+.month-dish {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.month-dish img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.month-dish > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.month-dish strong {
+  font-size: 1.15rem;
+}
+.badges {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.badge-item.done {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.badge-item .meter {
+  margin: 0.25rem 0 0;
+}
+.journal-month h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+}
+.journal-entry.cancelled .row-btn > span:first-child {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.filters {
+  margin: 0.5rem 0;
+}
+.cooked-dates {
+  margin: 0.75rem 0 0.25rem;
+}
+.push-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.badges + details {
+  margin-top: 1rem;
+}

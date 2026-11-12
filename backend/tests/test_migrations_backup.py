@@ -45,6 +45,7 @@ def test_ak10_backup_restore_roundtrip(client, app, settings, tmp_path, monkeypa
     buf = io.BytesIO()
     Image.new("RGB", (100, 100)).save(buf, "PNG")
     client.post(f"/api/v1/recipes/{r['id']}/image", files={"file": ("a.png", buf.getvalue(), "image/png")})
+    push_key = client.get("/api/v1/push/key").json()["public_key"]
 
     monkeypatch.setattr(cli, "get_settings", lambda: settings)
     cli.main(["backup", str(tmp_path / "sicherung"), "--keep", "2"])
@@ -73,6 +74,8 @@ def test_ak10_backup_restore_roundtrip(client, app, settings, tmp_path, monkeypa
 
     with TestClient(create_app(empty)) as restored:
         assert [x["title"] for x in restored.get("/api/v1/recipes", params={"q": "gratin"}).json()] == ["Gratin"]
+        # angemeldete Geräte bekommen weiter Benachrichtigungen: derselbe VAPID-Schlüssel
+        assert restored.get("/api/v1/push/key").json()["public_key"] == push_key
 
 
 def test_backup_keeps_only_newest(settings, tmp_path, monkeypatch, app):

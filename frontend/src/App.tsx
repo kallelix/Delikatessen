@@ -3,6 +3,8 @@ import { useApp } from "./AppContext";
 import { Icon } from "./components/Icon";
 import { Einkauf } from "./pages/Einkauf";
 import { Einstellungen } from "./pages/Einstellungen";
+import { Journal } from "./pages/Journal";
+import { Zutatensuche } from "./pages/Zutatensuche";
 import { Familie } from "./pages/Familie";
 import { Kochansicht } from "./pages/Kochansicht";
 import { Mehr } from "./pages/Mehr";
@@ -41,6 +43,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<Woche />} />
           <Route path="/rezepte" element={<Rezepte />} />
+          <Route path="/rezepte/zutaten" element={<Zutatensuche />} />
           <Route path="/rezepte/:id" element={<RezeptDetail />} />
           <Route path="/rezepte/:id/bearbeiten" element={<RezeptBearbeiten />} />
           <Route path="/rezepte/:id/kochen" element={<Kochansicht />} />
@@ -48,6 +51,7 @@ export function App() {
           <Route path="/einkauf" element={<Einkauf />} />
           <Route path="/mehr" element={<Mehr />} />
           <Route path="/mehr/rangliste" element={<Rangliste />} />
+          <Route path="/mehr/journal" element={<Journal />} />
           <Route path="/mehr/familie" element={<Familie />} />
           <Route path="/mehr/einstellungen" element={<Einstellungen />} />
           <Route path="*" element={<p className="empty">Diese Seite gibt es nicht.</p>} />

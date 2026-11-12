@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { api } from "../api";
 import { useApp } from "../AppContext";
+import { Benachrichtigungen } from "../components/Benachrichtigungen";
 import { useLoad } from "../lib";
 
 export function Mehr() {
@@ -13,6 +14,11 @@ export function Mehr() {
         <li>
           <Link className="row-btn" to="/mehr/rangliste">
             Rangliste
+          </Link>
+        </li>
+        <li>
+          <Link className="row-btn" to="/mehr/journal">
+            Journal
           </Link>
         </li>
         {isAdult && (
@@ -35,6 +41,9 @@ export function Mehr() {
           </>
         )}
       </ul>
+
+      <h2>Benachrichtigungen</h2>
+      <Benachrichtigungen />
 
       <h2>Profil</h2>
       <p className="muted small">Angemeldet als {me?.name ?? "–"}. Das Gerät merkt sich die Wahl.</p>

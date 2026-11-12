@@ -12,12 +12,15 @@ export function IngredientPicker({
   placeholder = "Zutat suchen",
   label,
   autoFocus,
+  allowCreate = true,
 }: {
   value: string;
   onPick: (ing: Ingredient) => void;
   placeholder?: string;
   label: string;
   autoFocus?: boolean;
+  /** false bei Suchen: dort soll kein neuer Katalogeintrag entstehen */
+  allowCreate?: boolean;
 }) {
   const [q, setQ] = useState(value);
   const [hits, setHits] = useState<Ingredient[]>([]);
@@ -77,7 +80,7 @@ export function IngredientPicker({
         onFocus={() => setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
       />
-      {open && q.trim() && (
+      {open && q.trim() && (hits.length > 0 || allowCreate) && (
         <ul className="picker-list" id={listId} role="listbox">
           {hits.map((h) => (
             <li key={h.id} role="option" aria-selected="false">
@@ -94,7 +97,7 @@ export function IngredientPicker({
               </button>
             </li>
           ))}
-          {!exact && (
+          {!exact && allowCreate && (
             <li role="option" aria-selected="false">
               <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={create}>
                 „{q.trim()}“ neu im Katalog anlegen

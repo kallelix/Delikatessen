@@ -8,7 +8,7 @@ Delikatessen erstellt für die Familie per Knopfdruck einen Wochenplan aus ihren
 
 ## Stand
 
-Stufe 1 (Kern) ist umgesetzt: Rezepte mit Fotos und Suche, Import per Link und Teilen-Menü, Zutatenkatalog, Familie mit No-go-Zutaten, Bewertungen und Rangliste, Wochenplan mit Neu-Vorschlag, Fixieren und Zusatzplätzen, Einkaufsliste in der App, Offline-Lesen der Woche. Stufe 2 bringt Bring!, Import per Foto und Sprache, KI-Auswertung und den Donnerstagslauf.
+Stufe 1 (Kern) ist umgesetzt: Rezepte mit Fotos und Suche, Import per Link und Teilen-Menü, Zutatenkatalog, Familie mit No-go-Zutaten, Bewertungen und Rangliste, Wochenplan mit Neu-Vorschlag, Fixieren und Zusatzplätzen, Einkaufsliste in der App, Offline-Lesen der Woche. Stufe 2 (Komfort und Einkauf) ist umgesetzt: Bring!, Import per Foto, Text und Diktat über ein eigenes KI-Gateway mit Budget, Suche nach Zutaten mit „diese Woche verbrauchen“, Essen des Monats und Abzeichen, Journal und der Donnerstagslauf mit Benachrichtigung. Die Abnahme auf dem Gerät steht noch aus, siehe [Betrieb](docs/betrieb.md).
 
 ## Aufbau
 
@@ -16,7 +16,7 @@ Stufe 1 (Kern) ist umgesetzt: Rezepte mit Fotos und Suche, Import per Link und T
 | --- | --- |
 | `backend/` | Python 3.11+, FastAPI, SQLite mit Alembic, Tests mit pytest |
 | `frontend/` | React, TypeScript, Vite, eigener Service Worker, Tests mit Vitest und Playwright |
-| `deploy/` | Installations- und Update-Skript, systemd-Units, nginx-Beispiel |
+| `deploy/` | Installations- und Update-Skript, systemd-Units, nginx-Beispiel, KI-Gateway (`ki-gateway/`) |
 
 ## Entwicklung
 

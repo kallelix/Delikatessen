@@ -4,6 +4,9 @@ import type {
   BringList,
   BringSettings,
   BringTransfer,
+  HistoryEntry,
+  HistoryFilter,
+  IngredientHit,
   Group,
   ImportJob,
   Ingredient,
@@ -133,6 +136,15 @@ export const api = {
     request<Record<string, number>>("PUT", `/slots/${slotId}/ratings/${personId}`, { value }),
   openRatings: () => request<OpenRating[]>("GET", "/ratings/open"),
   rankings: () => request<Rankings>("GET", "/rankings"),
+  setUseUp: (start: string, version: number, ingredient_ids: number[]) =>
+    request<Plan>("PUT", `/plans/${start}/use-up`, { version, ingredient_ids }),
+  byIngredients: (ids: number[]) => request<IngredientHit[]>("GET", `/search/by-ingredients${qs({ ids })}`),
+  history: (f: HistoryFilter) => request<HistoryEntry[]>("GET", `/history${qs({ ...f })}`),
+  pushKey: () => request<{ public_key: string }>("GET", "/push/key"),
+  pushSubscribe: (sub: PushSubscriptionJSON) => request<{ id: number }>("POST", "/push/subscriptions", sub),
+  pushUnsubscribe: (endpoint: string) => request<void>("DELETE", "/push/subscriptions", { endpoint }),
+  pushTest: (endpoint: string) => request<{ gesendet: number }>("POST", "/push/test", { endpoint }),
+  runThursday: () => request<{ erzeugt: boolean; woche?: string; gesendet?: number }>("POST", "/push/donnerstagslauf"),
 
   // Einkauf
   shopping: (start: string) => request<ShoppingItem[]>("GET", `/plans/${start}/shopping`),

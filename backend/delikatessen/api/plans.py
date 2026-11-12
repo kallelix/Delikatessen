@@ -7,15 +7,18 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from .. import appsettings, history, planner
-from ..models import Person, PlanSlot, PlanWeek, Rating, Recipe, ShoppingItem
+from ..models import Ingredient, Person, PlanSlot, PlanWeek, Rating, Recipe, ShoppingItem
 from ..shopping import shopping_list
 from .deps import get_db, get_today
 from .recipes import image_url, summary
 from .schemas import (
+    Badge,
     GenerateIn,
+    MonthDish,
+    NewDish,
     OpenRating,
     PlanOut,
     RankingEntry,
@@ -28,6 +31,8 @@ from .schemas import (
     SlotOut,
     SlotRecipe,
     SlotUpdate,
+    UseUpIn,
+    UseUpItem,
 )
 
 router = APIRouter()
@@ -41,12 +46,34 @@ def slot_recipe(r: Recipe | None) -> SlotRecipe | None:
     return SlotRecipe(id=r.id, title=r.title, image_url=image_url(r.image), duration_min=r.duration_min, size=r.size)
 
 
+def is_past(week: PlanWeek, today: date) -> bool:
+    """Ganz vergangene Wochen sind nur lesbar, Wertungen und "nicht gekocht" bleiben nachtragbar (D-JOUR)."""
+    return week.start + timedelta(days=6) < today
+
+
+def ensure_editable(week: PlanWeek, today: date) -> None:
+    if is_past(week, today):
+        raise HTTPException(409, "Vergangene Wochen sind nur lesbar. Wertungen lassen sich nachtragen.")
+
+
+def use_up_out(week: PlanWeek) -> list[UseUpItem]:
+    ids = week.use_up or []
+    if not ids:
+        return []
+    names = dict(
+        object_session(week).execute(select(Ingredient.id, Ingredient.name).where(Ingredient.id.in_(ids))).all()
+    )
+    return [UseUpItem(id=i, name=names[i]) for i in ids if i in names]
+
+
 def plan_out(week: PlanWeek, today: date) -> PlanOut:
     return PlanOut(
         start=week.start,
         end=week.start + timedelta(days=6),
         version=week.version,
         status=week.status,
+        readonly=is_past(week, today),
+        use_up=use_up_out(week),
         slots=[
             SlotOut(
                 id=s.id,
@@ -110,6 +137,7 @@ def generate_plan(
 ):
     data = data or GenerateIn()
     week = load_week(db, start, today)
+    ensure_editable(week, today)
     check_version(week, data.version)
     rng = random.Random(data.seed) if data.seed is not None else None
     planner.generate(db, week, appsettings.load(db), today, rng)
@@ -119,6 +147,7 @@ def generate_plan(
 @router.post("/plans/{start}/slots", response_model=PlanOut, status_code=201)
 def add_slots(start: str, data: SlotAdd, db: Session = Depends(get_db), today: date = Depends(get_today)):
     week = load_week(db, start, today)
+    ensure_editable(week, today)
     check_version(week, data.version)
     last = data.last or data.first
     if last < data.first:
@@ -132,6 +161,9 @@ def update_slot(
     start: str, slot_id: int, data: SlotUpdate, db: Session = Depends(get_db), today: date = Depends(get_today)
 ):
     week = load_week(db, start, today)
+    only_cooked_flag = data.model_dump(exclude_unset=True, exclude={"version", "not_cooked"}) == {}
+    if not only_cooked_flag:
+        ensure_editable(week, today)
     check_version(week, data.version)
     slot = get_slot(week, slot_id)
     if data.swap_main:
@@ -166,6 +198,7 @@ def delete_slot(
     start: str, slot_id: int, version: int, db: Session = Depends(get_db), today: date = Depends(get_today)
 ):
     week = load_week(db, start, today)
+    ensure_editable(week, today)
     check_version(week, version)
     slot = get_slot(week, slot_id)
     if not slot.extra:
@@ -176,11 +209,25 @@ def delete_slot(
     return plan_out(week, today)
 
 
+@router.put("/plans/{start}/use-up", response_model=PlanOut)
+def put_use_up(start: str, data: UseUpIn, db: Session = Depends(get_db), today: date = Depends(get_today)):
+    """ "Diese Woche verbrauchen" aus der Zutatensuche (D-ZUT). Wirkt beim nächsten Erzeugen und Neu-Vorschlag."""
+    week = load_week(db, start, today)
+    ensure_editable(week, today)
+    check_version(week, data.version)
+    known = set(db.scalars(select(Ingredient.id).where(Ingredient.id.in_(data.ingredient_ids))))
+    week.use_up = [i for i in dict.fromkeys(data.ingredient_ids) if i in known]
+    week.version += 1
+    db.commit()
+    return plan_out(week, today)
+
+
 @router.post("/plans/{start}/slots/{slot_id}/suggest", response_model=PlanOut)
 def suggest_slot(
     start: str, slot_id: int, data: GenerateIn, db: Session = Depends(get_db), today: date = Depends(get_today)
 ):
     week = load_week(db, start, today)
+    ensure_editable(week, today)
     check_version(week, data.version)
     slot = get_slot(week, slot_id)
     rng = random.Random(data.seed) if data.seed is not None else None
@@ -280,7 +327,74 @@ def rankings(db: Session = Depends(get_db), today: date = Depends(get_today)):
     # nur schon gekochte Gerichte, die lange her sind und gut ankamen
     lang = [(lval, e) for _, e, lval in entries if e.cooked_count > 0 and lval >= 0.5 and e.favorite_score >= 0.5]
     lang.sort(key=lambda x: (-(x[0] + x[1].favorite_score), x[1].recipe.title))
-    return Rankings(ranking=ranking, long_not_eaten=[e for _, e in lang[:5]])
+    recipes = {r.id: r for r, _, _ in entries}
+    return Rankings(
+        ranking=ranking,
+        long_not_eaten=[e for _, e in lang[:5]],
+        essen_des_monats=dish_of_month(db, today, recipes),
+        neu_ausprobiert=[
+            NewDish(recipe=summary(recipes[rid]), erstmals=first)
+            for rid, first in sorted(first_cooked(stats).items(), key=lambda x: (x[1], x[0]), reverse=True)
+            if rid in recipes and (first.year, first.month) == (today.year, today.month)
+        ],
+        abzeichen=badges(len([rid for rid in first_cooked(stats) if rid in recipes])),
+    )
+
+
+MIN_MONTH_RATINGS = 2
+BADGES = [
+    (1, "Erster Versuch", "das erste Gericht gekocht"),
+    (5, "Neugierig", "5 verschiedene Gerichte ausprobiert"),
+    (10, "Entdecker", "10 verschiedene Gerichte ausprobiert"),
+    (25, "Feinschmecker", "25 verschiedene Gerichte ausprobiert"),
+    (50, "Weltenbummler", "50 verschiedene Gerichte ausprobiert"),
+    (100, "Delikatessen-Profi", "100 verschiedene Gerichte ausprobiert"),
+]
+
+
+def first_cooked(stats: dict[int, history.RecipeStats]) -> dict[int, date]:
+    return {rid: min(st.cooked) for rid, st in stats.items() if st.cooked}
+
+
+def badges(tried: int) -> list[Badge]:
+    """Abzeichen der ganzen Familie für neu ausprobierte Gerichte, ohne Vergleich zwischen Personen (D-RANK)."""
+    return [
+        Badge(name=n, beschreibung=d, ziel=goal, stand=min(tried, goal), erreicht=tried >= goal)
+        for goal, n, d in BADGES
+    ]
+
+
+def dish_of_month(db: Session, today: date, recipes: dict[int, Recipe]) -> MonthDish | None:
+    """Bestes Mittel der Wertungen im Monat, ab zwei Wertungen. Steht im laufenden Monat noch keins fest,
+    gilt der Vormonat."""
+    first = today.replace(day=1)
+    prev = (first - timedelta(days=1)).replace(day=1)
+    for start, end, running in ((first, today, True), (prev, first - timedelta(days=1), False)):
+        rows = db.execute(
+            select(PlanSlot.recipe_id, Rating.value)
+            .join(Rating, Rating.slot_id == PlanSlot.id)
+            .where(
+                PlanSlot.cancelled.is_(False),
+                PlanSlot.not_cooked.is_(False),
+                PlanSlot.date >= start,
+                PlanSlot.date <= end,
+            )
+        ).all()
+        values: dict[int, list[float]] = {}
+        for rid, v in rows:
+            if rid in recipes:
+                values.setdefault(rid, []).append(v)
+        ok = [(sum(v) / len(v), len(v), rid) for rid, v in values.items() if len(v) >= MIN_MONTH_RATINGS]
+        if ok:
+            mean, count, rid = max(ok, key=lambda x: (x[0], x[1], -x[2]))
+            return MonthDish(
+                recipe=summary(recipes[rid]),
+                monat=start.strftime("%Y-%m"),
+                mittel=round(mean, 3),
+                wertungen=count,
+                laufend=running,
+            )
+    return None
 
 
 # --- Einkauf ---------------------------------------------------------------------------

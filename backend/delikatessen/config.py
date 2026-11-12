@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Gateway das Feld nicht durchreicht (AK-24, Risiko in Abschnitt 13)
     ki_structured: Literal["output_config", "none"] = "output_config"
     ki_timeout_s: float = 180.0
+    # Absender für Web Push (VAPID "sub"). Eine Adresse, unter der man im Problemfall erreichbar ist.
+    push_contact: str = "mailto:delikatessen@example.org"
+    # Donnerstagslauf (F-24). In Tests aus, damit kein Hintergrund-Thread läuft.
+    scheduler_enabled: bool = True
 
     @property
     def ki_configured(self) -> bool:

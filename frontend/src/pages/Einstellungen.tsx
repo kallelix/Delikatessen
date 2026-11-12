@@ -12,6 +12,8 @@ const WEIGHT_LABEL: Record<keyof Weights, string> = {
   L: "Lange nicht gegessen",
   T: "Aufwand passt zum Tag",
   A: "Abzug für Wiederholung",
+  V: "Vorrat verbrauchen",
+  N: "Neues ausprobieren",
 };
 
 /** Planungsraster, Zeitlimits, Gewichte und Uhrzeit, nur für Erwachsene (F-41). */
@@ -32,6 +34,19 @@ export function Einstellungen() {
     const cur = s.grid[day] ?? [];
     setS({ ...s, grid: { ...s.grid, [day]: cur.includes(meal) ? cur.filter((m) => m !== meal) : [...cur, meal] } });
   };
+
+  async function runNow() {
+    try {
+      const r = await api.runThursday();
+      toast.show(
+        r.erzeugt
+          ? `Entwurf erzeugt, ${r.gesendet ?? 0} Benachrichtigung${r.gesendet === 1 ? "" : "en"} verschickt`
+          : "Für nächste Woche gibt es schon einen Plan. Nichts verändert.",
+      );
+    } catch (e) {
+      toast.show(errorText(e), { error: true });
+    }
+  }
 
   async function save() {
     try {
@@ -105,9 +120,16 @@ export function Einstellungen() {
       ))}
 
       <label className="field">
-        <span>Planvorschlag donnerstags um (ab Stufe 2)</span>
+        <span>Planvorschlag donnerstags um</span>
         <input type="time" value={s.plan_time} onChange={(e) => setS({ ...s, plan_time: e.target.value })} />
       </label>
+      <p className="muted small">
+        Dann entsteht ein Entwurf für die nächste Woche, falls noch keiner besteht, und alle angemeldeten Geräte bekommen
+        eine Benachrichtigung.{" "}
+        <button type="button" className="link-btn" onClick={runNow}>
+          Jetzt ausprobieren
+        </button>
+      </p>
 
       <h2>Bring!</h2>
       <BringEinstellungen />

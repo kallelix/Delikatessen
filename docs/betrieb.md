@@ -20,7 +20,7 @@ Proxmox-Backups des Containers zusätzlich einplanen. Sie ersetzen nicht die tä
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/kallelix/Delikatessen/main/deploy/install.sh
 less install.sh          # vorher lesen
-sudo bash install.sh     # neuestes Release, oder: sudo bash install.sh v0.1.1
+sudo bash install.sh     # neuestes Release, oder: sudo bash install.sh v0.2.0
 ```
 
 Das Skript ist wiederholbar. Es legt den Nutzer `delikatessen`, die Python-Umgebung unter `/opt/delikatessen/releases/<Version>`, die Konfiguration `/etc/delikatessen/env`, den Dienst und den Sicherungs-Timer an. Pakete installiert es nur mit den Hashes aus der Lockdatei.
@@ -92,7 +92,7 @@ Teilen, Push, Wake Lock und Offline lassen sich nur auf echten Android-Geräten 
 
 **AK-12:** Stufe 1 gilt als abgenommen, wenn die Familie zwei Wochen mit der App geplant hat. Erst danach beginnt Stufe 2.
 
-## 7. Stand der Abnahmekriterien Stufe 1
+## 7. Stand der Abnahmekriterien
 
 | ID | Prüfung | Stand |
 | --- | --- | --- |
@@ -110,6 +110,14 @@ Teilen, Push, Wake Lock und Offline lassen sich nur auf echten Android-Geräten 
 | AK-12 | zwei Wochen Familienbetrieb | offen |
 | AK-13 | `test_ak13_extra_lunch_slots_and_cancelled_not_in_shopping` | automatisch |
 | AK-14 | `test_ak14_new_suggestion_never_repeats` | automatisch |
+| AK-20 | `test_ak20_amounts_and_no_duplicates`, `test_ak20_bought_at_home_and_reactivated` | automatisch gegen eine Bring!-Attrappe, plus Gerät |
+| AK-21 | `test_ak21_list_usable_without_bring`, `test_ak21_bring_offline_changes_nothing` | automatisch, plus Gerät |
+| AK-22 | 10 Testfotos | Gerät, kostet KI-Budget |
+| AK-23 | `test_ak23_text_import_ends_in_preview`, Playwright „Text aus Diktat …“ | automatisch mit KI-Attrappe, plus Gerät |
+| AK-24 | `delikatessen ki-pruefen` | Gateway mit Nachbau der Anthropic-API geprüft, echter Lauf offen |
+| AK-25 | `test_ak25_budget_exhausted`, lokaler Test gegen LiteLLM (HTTP 422) | automatisch, plus Gerät |
+| AK-26 | `test_ak26_thursday_run_creates_draft_and_notifies` | automatisch, plus Gerät |
+| AK-27 | `test_ak27_journal_finds_all_dates`, `test_ak27_past_week_readonly_but_rateable` | automatisch, plus Gerät |
 
 Für AK-06 lohnt es sich, zehn echte Rezeptseiten, die die Familie nutzt, als HTML unter `backend/tests/fixtures/rezeptseiten/` abzulegen. Wegen der Urheberrechte bleiben sie besser außerhalb des öffentlichen Repositorys oder werden auf das Schema-Markup gekürzt.
 
@@ -164,3 +172,37 @@ Der Befehl schickt ein kurzes Beispielrezept durch das Gateway und meldet „AK-
 | Datenschutz | An die KI gehen nur Rezepttext und Fotos, ohne EXIF und verkleinert (N-11). Das Gateway speichert keine Prompts (`turn_off_message_logging`) |
 | Updates | Images sind auf Version und Digest festgelegt. Ein Update ist eine bewusste Änderung an `docker-compose.yml`, nie automatisch |
 | Kosten | Unter „Mehr“ › „Status der Dienste“ zeigt die App den Verbrauch des Monats |
+
+## 10. Stufe 2: Donnerstagslauf und Benachrichtigungen
+
+Donnerstags zur Uhrzeit aus den Einstellungen (Vorgabe 18:00) entsteht ein Entwurf für die Woche ab dem nächsten Samstag, falls dort noch kein Platz belegt ist. Alle angemeldeten Geräte bekommen dann eine Benachrichtigung ohne Rezeptdetails (F-24). War der Dienst zur Uhrzeit aus, holt der nächste Start den Lauf bis Freitagabend nach.
+
+- **Geräte anmelden:** in der App unter „Mehr“ › „Benachrichtigungen“. Das geht nur in der installierten App über HTTPS. Mit „Testnachricht schicken“ lässt es sich gleich prüfen.
+- **Ausprobieren:** „Mehr“ › „Einstellungen“ › „Jetzt ausprobieren“ führt den Lauf sofort aus. Gibt es für nächste Woche schon einen Plan, bleibt er unverändert.
+- **Netz:** Die App braucht ausgehend HTTPS zum Push-Dienst des Browsers (bei Chrome Firebase Cloud Messaging). Das Öffnen der Nachricht braucht wie immer das VPN.
+- **Schlüssel:** Den VAPID-Schlüssel erzeugt die App selbst als `/var/lib/delikatessen/vapid_private.pem`. Er ist Teil der täglichen Sicherung. Geht er verloren, müssen sich die Geräte neu anmelden.
+- **Absender:** `DELIKATESSEN_PUSH_CONTACT` in `/etc/delikatessen/env` auf eine echte Adresse setzen, etwa `mailto:familie@example.org`. Darüber kann sich ein Push-Dienst bei Problemen melden.
+
+## 11. Planung in Stufe 2
+
+Zwei Terme ergänzen die Formel aus Pflichtenheft Abschnitt 6, beide mit Gewicht in den Einstellungen:
+
+| Größe | Bedeutung | Berechnung | Gewicht (Vorgabe) |
+| --- | --- | --- | --- |
+| V | Vorrat verbrauchen | Anteil der noch nicht abgedeckten Zutaten aus „diese Woche verbrauchen“, die das Rezept enthält. Ist eine Zutat einmal im Plan, zählt sie nicht mehr | 0,30 |
+| N | Neues ausprobieren | 1 für ein noch nie gekochtes Rezept, sonst 0 | 0,10 |
+
+„Diese Woche verbrauchen“ setzt man über „Rezepte“ › „Nach Zutaten suchen“. Die Auswahl hängt an der Woche und wirkt beim nächsten Erzeugen und bei „Neuer Vorschlag“. Der Grund am Platz lautet dann etwa „verbraucht Zucchini“.
+
+Ganz vergangene Wochen sind nur lesbar (D-JOUR). Wertungen und „nicht gekocht“ lassen sich dort weiter nachtragen. Das Journal unter „Mehr“ listet alle Kochtermine und entfallenen Essen.
+
+## 12. Abnahme Stufe 2 auf dem Gerät
+
+- [ ] Bring!: Einkaufsliste senden, in der Bring!-App erscheinen alle Einträge mit Menge. Erneut senden erzeugt keine Dubletten (AK-20)
+- [ ] Bring! in den Einstellungen abschalten, die Einkaufsliste bleibt vollständig nutzbar (AK-21)
+- [ ] `delikatessen ki-pruefen` meldet „AK-24 erfüllt“ (AK-24)
+- [ ] 10 Testfotos, davon 3 handschriftlich: mindestens 8 nach höchstens drei Korrekturen speicherbar (AK-22)
+- [ ] Rezept per Diktierknopf und per Mikrofon der Tastatur eingeben, beide ergeben eine Vorschau (AK-23)
+- [ ] Budget im Gateway kurz auf 0 setzen: die App zeigt den Hinweis, Link-Import und Plan gehen weiter (AK-25)
+- [ ] Benachrichtigungen auf jedem Familiengerät einschalten, „Jetzt ausprobieren“ bringt die Nachricht auf alle Geräte (AK-26)
+- [ ] Im Journal ein Rezept suchen, alle Termine erscheinen. Eine vergangene Woche öffnen und eine Wertung nachtragen (AK-27)

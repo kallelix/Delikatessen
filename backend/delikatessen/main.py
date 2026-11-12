@@ -10,13 +10,15 @@ from pathlib import Path
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import __version__, catalog
-from .api import bring, family, imports, plans, recipes
+from . import __version__, catalog, push
+from .api import bring, entdecken, family, imports, plans, recipes
+from .api import push as push_api
 from .bring import LiveBring
 from .config import Settings, get_settings
 from .db import Database
 from .importer import ImportRunner
 from .migrate import upgrade
+from .scheduler import Scheduler
 
 log = logging.getLogger("delikatessen")
 mimetypes.add_type("application/manifest+json", ".webmanifest")
@@ -29,7 +31,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.imports.resume_pending()
+        if settings.scheduler_enabled:
+            app.state.scheduler.start()
         yield
+        app.state.scheduler.shutdown()
         app.state.imports.shutdown()
 
     app = FastAPI(
@@ -51,9 +56,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.imports = ImportRunner(db.sessionmaker, settings)
     app.state.today_override = None
     app.state.bring_factory = LiveBring
+    # Tests ersetzen den Versand durch eine Attrappe
+    app.state.push_sender_factory = push.live_sender
+    app.state.scheduler = Scheduler(db.sessionmaker, settings, lambda s: app.state.push_sender_factory(s))
 
     api = APIRouter(prefix="/api/v1")
-    for module in (recipes, plans, family, imports, bring):
+    for module in (recipes, plans, family, imports, bring, entdecken, push_api):
         api.include_router(module.router)
     app.include_router(api)
 

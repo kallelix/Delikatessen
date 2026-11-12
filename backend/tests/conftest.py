@@ -19,7 +19,7 @@ WEEK = "2026-11-07"
 
 @pytest.fixture
 def settings(tmp_path) -> Settings:
-    return Settings(data_dir=tmp_path / "data", allow_private_fetch=True)
+    return Settings(data_dir=tmp_path / "data", allow_private_fetch=True, scheduler_enabled=False)
 
 
 @pytest.fixture
@@ -80,3 +80,22 @@ def make_person(client, name="Anna", kind="erwachsen", nogos=(), factor=None):
     if kind == "erwachsen" and "X-Delikatessen-Person" not in client.headers:
         client.headers["X-Delikatessen-Person"] = str(person["id"])
     return person
+
+
+def plan_in_past(client, app, week_start: str, slot_index: int, recipe_id: int) -> dict:
+    """Trägt ein Gericht in eine vergangene Woche ein, so wie es damals geplant wurde.
+
+    Ganz vergangene Wochen sind nur lesbar (D-JOUR), deshalb gilt kurz das Datum jener Woche.
+    """
+    saved = app.state.today_override
+    app.state.today_override = date.fromisoformat(week_start)
+    try:
+        p = client.get(f"/api/v1/plans/{week_start}").json()
+        slot = p["slots"][slot_index]
+        r = client.put(
+            f"/api/v1/plans/{week_start}/slots/{slot['id']}", json={"version": p["version"], "recipe_id": recipe_id}
+        )
+        assert r.status_code == 200, r.text
+        return slot
+    finally:
+        app.state.today_override = saved

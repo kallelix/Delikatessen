@@ -110,6 +110,10 @@ export interface Plan {
   end: string;
   version: number;
   status: string;
+  /** ganz vergangene Woche: nur lesbar, Wertungen nachtragbar (D-JOUR) */
+  readonly: boolean;
+  /** diese Woche verbrauchen (D-ZUT) */
+  use_up: { id: number; name: string }[];
   slots: Slot[];
 }
 
@@ -132,6 +136,43 @@ export interface RankingEntry {
 export interface Rankings {
   ranking: RankingEntry[];
   long_not_eaten: RankingEntry[];
+  essen_des_monats: { recipe: RecipeSummary; monat: string; mittel: number; wertungen: number; laufend: boolean } | null;
+  neu_ausprobiert: { recipe: RecipeSummary; erstmals: string }[];
+  abzeichen: Badge[];
+}
+
+export interface Badge {
+  name: string;
+  beschreibung: string;
+  ziel: number;
+  stand: number;
+  erreicht: boolean;
+}
+
+export interface IngredientHit {
+  recipe: RecipeSummary;
+  treffer: string[];
+  fehlend: number;
+  anteil: number;
+}
+
+export interface HistoryEntry {
+  slot_id: number;
+  date: string;
+  meal: Meal;
+  week_start: string;
+  status: "gekocht" | "entfallen";
+  recipe: SlotRecipe | null;
+  ratings: Record<string, number>;
+  mittel: number | null;
+}
+
+export interface HistoryFilter {
+  q?: string;
+  ingredient_id?: number;
+  von?: string;
+  bis?: string;
+  wertung?: "lecker" | "okay" | "mies" | "ohne";
 }
 
 export interface ShoppingItem {
@@ -213,6 +254,8 @@ export interface Weights {
   L: number;
   T: number;
   A: number;
+  V: number;
+  N: number;
 }
 
 export interface AppSettings {

@@ -36,6 +36,41 @@ self.addEventListener("fetch", (event: FetchEvent) => {
   );
 });
 
+// Benachrichtigung vom Donnerstagslauf (F-24). Die Nachricht enthält keine Rezeptdetails.
+self.addEventListener("push", (event: PushEvent) => {
+  let msg: { title?: string; body?: string; url?: string } = {};
+  try {
+    msg = event.data?.json() ?? {};
+  } catch {
+    msg = { body: event.data?.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(msg.title ?? "Delikatessen", {
+      body: msg.body ?? "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: "wochenplan",
+      data: { url: msg.url ?? "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+  const target = new URL((event.notification.data?.url as string) ?? "/", self.location.origin).href;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      if (open) {
+        await open.focus();
+        return open.navigate(target);
+      }
+      return self.clients.openWindow(target);
+    })(),
+  );
+});
+
 self.skipWaiting();
 clientsClaim();
 

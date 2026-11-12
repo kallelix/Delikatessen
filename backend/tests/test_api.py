@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from PIL import Image
 
-from tests.conftest import TODAY, WEEK, ing_id, make_person, make_recipe
+from tests.conftest import TODAY, WEEK, ing_id, make_person, make_recipe, plan_in_past
 
 API = "/api/v1"
 
@@ -174,9 +174,7 @@ def test_long_not_eaten(client, app):
     make_person(client)
     r = make_recipe(client, "Gulasch")
     old_week = (date.fromisoformat(WEEK) - timedelta(days=84)).isoformat()
-    p = client.get(f"{API}/plans/{old_week}").json()
-    slot = p["slots"][1]
-    client.put(f"{API}/plans/{old_week}/slots/{slot['id']}", json={"version": p["version"], "recipe_id": r["id"]})
+    slot = plan_in_past(client, app, old_week, 1, r["id"])
     me = client.get(f"{API}/me").json()
     client.put(f"{API}/slots/{slot['id']}/ratings/{me['id']}", json={"value": 1})
     lang = client.get(f"{API}/rankings").json()["long_not_eaten"]
@@ -197,7 +195,7 @@ def test_candidates_respect_hard_rules(client):
 
 def test_settings_validation(client):
     s = client.get(f"{API}/settings").json()
-    assert s["weights"] == {"F": 0.5, "L": 0.25, "T": 0.1, "A": 0.15}
+    assert s["weights"] == {"F": 0.5, "L": 0.25, "T": 0.1, "A": 0.15, "V": 0.3, "N": 0.1}
     s["grid"]["0"] = ["frühstück"]
     assert client.put(f"{API}/settings", json=s).status_code == 422
     s["grid"]["0"] = ["mittag", "abend"]

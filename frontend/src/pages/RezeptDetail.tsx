@@ -112,6 +112,16 @@ export function RezeptDetail() {
         </>
       )}
 
+      {r.cooked_dates.length > 1 && (
+        <details className="cooked-dates">
+          <summary>Bisherige Termine ({r.cooked_dates.length})</summary>
+          <ul className="plain">
+            {r.cooked_dates.map((d) => (
+              <li key={d}>{dateLabel(d)}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       <p className="muted small">
         {r.cooked_count > 0
           ? `${r.cooked_count}-mal gekocht, zuletzt am ${dateLabel(r.last_cooked!)}.`

@@ -63,6 +63,8 @@ export function Woche() {
   }, [plan.data]);
 
   const filled = plan.data?.slots.filter((s) => s.recipe).length ?? 0;
+  const readonly = !!plan.data?.readonly;
+  const useUp = plan.data?.use_up ?? [];
   const isCurrent = start === weekStart();
   const longAgo = rankings.data?.long_not_eaten.slice(0, 3) ?? [];
 
@@ -84,6 +86,18 @@ export function Woche() {
       </header>
 
       {plan.error && !plan.data && <p className="error">{plan.error}</p>}
+      {readonly && <p className="notice">Vergangene Woche, nur zum Nachlesen. Wertungen lassen sich nachtragen.</p>}
+      {!readonly && useUp.length > 0 && (
+        <div className="card use-up">
+          <p>
+            <strong>Diese Woche verbrauchen:</strong> {useUp.map((u) => u.name).join(", ")}
+          </p>
+          <p className="muted small">Wirkt beim nächsten Erzeugen und bei „Neuer Vorschlag“.</p>
+          <button type="button" className="link-btn" disabled={busy} onClick={() => change((v) => api.setUseUp(start, v, []), "Auswahl entfernt")}>
+            Auswahl entfernen
+          </button>
+        </div>
+      )}
 
       {openRatings.data && openRatings.data.length > 0 && (
         <div className="card attention">
@@ -133,21 +147,26 @@ export function Woche() {
         </div>
       )}
 
-      <div className="actions-inline">
-        <button
-          type="button"
-          className={`btn${filled ? "" : " primary"}`}
-          disabled={busy || !plan.data}
-          onClick={() => change((v) => api.generate(start, v), filled ? "Plan neu erzeugt. Fixiertes bleibt." : "Plan erzeugt")}
-        >
-          <Icon name="wuerfel" /> {filled ? "Neu erzeugen" : "Plan erzeugen"}
-        </button>
-        <button type="button" className="btn" disabled={busy || !plan.data} onClick={() => setSheet({ kind: "extra" })}>
-          <Icon name="neu" /> Platz hinzufügen
-        </button>
-      </div>
+      {!readonly && (
+        <div className="actions-inline">
+          <button
+            type="button"
+            className={`btn${filled ? "" : " primary"}`}
+            disabled={busy || !plan.data}
+            onClick={() => change((v) => api.generate(start, v), filled ? "Plan neu erzeugt. Fixiertes bleibt." : "Plan erzeugt")}
+          >
+            <Icon name="wuerfel" /> {filled ? "Neu erzeugen" : "Plan erzeugen"}
+          </button>
+          <button type="button" className="btn" disabled={busy || !plan.data} onClick={() => setSheet({ kind: "extra" })}>
+            <Icon name="neu" /> Platz hinzufügen
+          </button>
+          <Link className="btn" to="/rezepte/zutaten">
+            Vorrat verbrauchen
+          </Link>
+        </div>
+      )}
 
-      {filled > 0 && (
+      {filled > 0 && !readonly && (
         <div className="actions-bottom">
           <button type="button" className="btn primary wide" onClick={() => navigate(`/einkauf?woche=${start}`)}>
             <Icon name="einkauf" /> Zutaten einkaufen
@@ -159,6 +178,7 @@ export function Woche() {
         <SlotSheet
           slot={sheet.slot}
           plan={plan.data}
+          readonly={readonly}
           onClose={() => setSheet(null)}
           onChange={change}
           onChoose={() => setSheet({ kind: "choose", slot: sheet.slot })}
@@ -234,6 +254,7 @@ function SlotRow({ slot, onOpen }: { slot: Slot; onOpen: () => void }) {
 function SlotSheet({
   slot,
   plan,
+  readonly,
   start,
   onClose,
   onChange,
@@ -242,6 +263,7 @@ function SlotSheet({
 }: {
   slot: Slot;
   plan: Plan;
+  readonly: boolean;
   start: string;
   onClose: () => void;
   onChange: (fn: (version: number) => Promise<Plan>, done?: string) => Promise<void>;
@@ -261,7 +283,7 @@ function SlotSheet({
       {slot.recipe && !slot.cancelled && (
         <SheetAction onClick={() => navigate(`/rezepte/${slot.recipe!.id}`)}>Rezept ansehen</SheetAction>
       )}
-      {!slot.cancelled && (
+      {!slot.cancelled && !readonly && (
         <>
           <SheetAction onClick={() => onChange((v) => api.suggest(start, slot.id, v))}>Neuer Vorschlag</SheetAction>
           <SheetAction onClick={onChoose}>Rezept wählen</SheetAction>
@@ -278,21 +300,24 @@ function SlotSheet({
           {slot.not_cooked ? "Doch gekocht" : "Nicht gekocht"}
         </SheetAction>
       )}
-      {canSwap && !slot.cancelled && (
-        <SheetAction onClick={() => upd({ swap_main: true }, "Hauptmahlzeit getauscht")}>
-          {slot.size === "haupt" ? "Hauptmahlzeit auf die andere Mahlzeit legen" : "Hier die Hauptmahlzeit essen"}
-        </SheetAction>
-      )}
-      <SheetAction onClick={() => upd({ cancelled: !slot.cancelled }, slot.cancelled ? "Wieder eingeplant" : "Essen entfällt")}>
-        {slot.cancelled ? "Wieder einplanen" : "Essen entfällt"}
-      </SheetAction>
-      {slot.recipe && !slot.cancelled && (
-        <SheetAction onClick={() => upd({ clear_recipe: true })}>Platz leeren</SheetAction>
-      )}
-      {slot.extra && (
-        <SheetAction danger onClick={() => onChange((v) => api.deleteSlot(start, slot.id, v), "Platz entfernt")}>
-          Zusatzplatz entfernen
-        </SheetAction>
+      {/* vergangene Wochen: nur Ansehen, Bewerten und "nicht gekocht" (D-JOUR) */}
+      {!readonly && (
+        <>
+          {canSwap && !slot.cancelled && (
+            <SheetAction onClick={() => upd({ swap_main: true }, "Hauptmahlzeit getauscht")}>
+              {slot.size === "haupt" ? "Hauptmahlzeit auf die andere Mahlzeit legen" : "Hier die Hauptmahlzeit essen"}
+            </SheetAction>
+          )}
+          <SheetAction onClick={() => upd({ cancelled: !slot.cancelled }, slot.cancelled ? "Wieder eingeplant" : "Essen entfällt")}>
+            {slot.cancelled ? "Wieder einplanen" : "Essen entfällt"}
+          </SheetAction>
+          {slot.recipe && !slot.cancelled && <SheetAction onClick={() => upd({ clear_recipe: true })}>Platz leeren</SheetAction>}
+          {slot.extra && (
+            <SheetAction danger onClick={() => onChange((v) => api.deleteSlot(start, slot.id, v), "Platz entfernt")}>
+              Zusatzplatz entfernen
+            </SheetAction>
+          )}
+        </>
       )}
     </Sheet>
   );
