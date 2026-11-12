@@ -15,7 +15,7 @@ from .catalog import Matcher
 from .config import Settings
 from .models import ImportJob
 from .netguard import FetchError, fetch
-from .units import parse_ingredient_line
+from .units import ParsedLine, format_quantity, parse_ingredient_line
 
 log = logging.getLogger(__name__)
 
@@ -51,25 +51,74 @@ def _page_title(html: str) -> str | None:
     return " ".join(unescape(m.group(1)).split())[:200] if m else None
 
 
+# Trennt Sammelzeilen wie "Salz und Pfeffer" oder "Salz, Pfeffer, Muskat". "oder" und "/" bleiben stehen,
+# weil sie Alternativen meinen.
+_SPLIT_RE = re.compile(r"\s*(?:,|;|&|\+|\bund\b|\bsowie\b)\s*", re.IGNORECASE)
+# Bei diesen Einheiten gilt die Menge für jede Zutat: "1 Prise Salz und Pfeffer"
+_PER_ITEM_UNITS = {"Prise", "Msp."}
+
+
+def _match_part(matcher: Matcher, text: str) -> tuple[int, str, str | None] | None:
+    """Ordnet einen Teil zu, notfalls ohne vorangestellte Beschreibung ("frisch gemahlener Pfeffer")."""
+    words = text.split()
+    for i in range(len(words)):
+        candidate = " ".join(words[i:])
+        ingredient_id = matcher.match(candidate)
+        if ingredient_id:
+            return ingredient_id, candidate, " ".join(words[:i]) or None
+    return None
+
+
+def _split_combined(p: ParsedLine, matcher: Matcher) -> list[tuple[int, str, str | None, float | None, str | None]]:
+    """Zerlegt eine Sammelzeile, aber nur, wenn jeder Teil im Katalog steht ("Knoblauch, gehackt" bleibt ganz)."""
+    if not p.body or matcher.match(p.body):
+        return []
+    parts = [s.strip(" -–:;.") for s in _SPLIT_RE.split(p.body)]
+    parts = [s for s in parts if s]
+    if len(parts) < 2:
+        return []
+    matched = [_match_part(matcher, s) for s in parts]
+    if not all(matched):
+        return []
+    if p.amount is None or p.unit in _PER_ITEM_UNITS:
+        amount, unit, total = p.amount, p.unit, None
+    else:
+        # "200 g Erbsen und Möhren": wie viel wovon, steht nicht da
+        amount, unit, total = None, None, f"zusammen {format_quantity(p.amount, p.unit)}"
+    out = []
+    for ingredient_id, name, description in matched:
+        notes = [*p.base_notes, *(n for n in (description, total) if n)]
+        out.append((ingredient_id, name, ", ".join(notes) or None, amount, unit))
+    return out
+
+
 def preview_ingredients(session: Session, lines: list[str]) -> list[dict]:
     matcher = Matcher(session)
     out = []
-    for line in lines:
-        if not line or not line.strip():
-            continue
-        p = parse_ingredient_line(line)
-        ingredient_id = matcher.match(p.name)
+
+    def add(line: str, amount, unit, name: str, note, ingredient_id: int | None) -> None:
         out.append(
             {
-                "line": p.line,
-                "amount": p.amount,
-                "unit": p.unit,
-                "name": p.name,
-                "note": p.note,
+                "line": line,
+                "amount": amount,
+                "unit": unit,
+                "name": name,
+                "note": note,
                 "ingredient_id": ingredient_id,
                 "ingredient_name": matcher.names.get(ingredient_id) if ingredient_id else None,
             }
         )
+
+    for line in lines:
+        if not line or not line.strip():
+            continue
+        p = parse_ingredient_line(line)
+        split = _split_combined(p, matcher)
+        if split:
+            for ingredient_id, name, note, amount, unit in split:
+                add(p.line, amount, unit, name, note, ingredient_id)
+        else:
+            add(p.line, p.amount, p.unit, p.name, p.note, matcher.match(p.name))
     return out
 
 

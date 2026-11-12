@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../api";
 import { Icon } from "../components/Icon";
-import { useLoad } from "../lib";
+import { useApp } from "../AppContext";
+import { familyPortions, useLoad } from "../lib";
+import { formatNumber } from "../units";
 import { IngredientList } from "./RezeptDetail";
 
 /** Kochansicht mit großer Schrift, das Display bleibt an (F-04). */
@@ -11,12 +13,14 @@ export function Kochansicht() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const recipe = useLoad(() => api.recipe(id), [id]);
+  const { persons } = useApp();
   const [step, setStep] = useState(0);
   const awake = useWakeLock();
 
   if (!recipe.data) return <div className="page" aria-busy="true" />;
   const r = recipe.data;
-  const portions = Number(params.get("portionen")) || r.servings;
+  // aus der Rezeptansicht mitgegeben, sonst (etwa direkt aus der Woche) für die Familie
+  const portions = Number(params.get("portionen")) || familyPortions(persons) || r.servings;
   const steps = r.steps;
 
   return (
@@ -29,7 +33,7 @@ export function Kochansicht() {
         <span className="muted small">{awake ? "Display bleibt an" : ""}</span>
       </header>
       <details className="cook-ingredients" open={step === 0}>
-        <summary>Zutaten für {portions}</summary>
+        <summary>Zutaten für {formatNumber(portions)}</summary>
         <IngredientList recipe={r} portions={portions} large />
       </details>
       {steps.length > 0 ? (

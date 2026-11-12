@@ -732,6 +732,9 @@ input[type="range"] {
   font-size: 1.3rem;
   font-weight: 700;
 }
+.portions-hint {
+  margin: -0.5rem 0 0.5rem;
+}
 .portions .icon-btn {
   border: 1px solid var(--line);
 }

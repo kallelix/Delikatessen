@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Meal } from "./types";
+import type { Meal, Person } from "./types";
+
+/** Portionen der Familie wie in der Einkaufsliste: Summe der Portionsfaktoren aller aktiven Personen. */
+export function familyPortions(persons: Person[]): number | null {
+  const sum = persons.filter((p) => p.active).reduce((s, p) => s + p.portion_factor, 0);
+  return sum > 0 ? Math.round(sum * 100) / 100 : null;
+}
 
 const DAY = 86_400_000;
 const WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];

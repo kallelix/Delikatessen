@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api";
 import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toast";
-import { dateLabel, errorText, useLoad } from "../lib";
-import { formatQuantity, scale } from "../units";
+import { useApp } from "../AppContext";
+import { dateLabel, errorText, familyPortions, useLoad } from "../lib";
+import { formatNumber, formatQuantity, scale } from "../units";
 import type { Recipe } from "../types";
 
 export function RezeptDetail() {
@@ -12,13 +13,16 @@ export function RezeptDetail() {
   const recipe = useLoad(() => api.recipe(id), [id]);
   const navigate = useNavigate();
   const toast = useToast();
+  const { persons } = useApp();
   const [servings, setServings] = useState<number | null>(null);
   const [hidden, setHidden] = useState(false);
 
   if (recipe.error && !recipe.data) return <p className="error page">{recipe.error}</p>;
   if (!recipe.data || hidden) return <div className="page" aria-busy="true" />;
   const r = recipe.data;
-  const portions = servings ?? r.servings;
+  // Standard ist die aktuelle Familie, nicht die Portionenzahl vom Erfassen
+  const family = familyPortions(persons);
+  const portions = servings ?? family ?? r.servings;
 
   async function toggle(field: "favorite" | "excluded") {
     try {
@@ -79,11 +83,20 @@ export function RezeptDetail() {
         <button type="button" className="icon-btn" aria-label="Weniger Portionen" onClick={() => setServings(Math.max(1, portions - 1))}>
           −
         </button>
-        <output aria-live="polite">{portions}</output>
+        <output aria-live="polite">{formatNumber(portions)}</output>
         <button type="button" className="icon-btn" aria-label="Mehr Portionen" onClick={() => setServings(Math.min(50, portions + 1))}>
           +
         </button>
       </div>
+      <p className="muted small portions-hint">
+        {family !== null && portions === family ? "Für die Familie. " : ""}
+        Das Rezept ist für {formatNumber(r.servings)} angegeben.
+        {family !== null && portions !== family && (
+          <button type="button" className="link-btn" onClick={() => setServings(null)}>
+            Für die Familie ({formatNumber(family)})
+          </button>
+        )}
+      </p>
 
       <h2>Zutaten</h2>
       <IngredientList recipe={r} portions={portions} />

@@ -125,6 +125,10 @@ class ParsedLine:
     unit: str | None
     name: str
     note: str | None
+    # Text nach Menge und Einheit samt Kommateil ("Salz, Pfeffer") und die Zusätze ohne Kommateil,
+    # damit der Import Sammelzeilen in einzelne Zutaten zerlegen kann
+    body: str = ""
+    base_notes: tuple[str, ...] = ()
 
 
 def parse_ingredient_line(line: str) -> ParsedLine:
@@ -163,17 +167,19 @@ def parse_ingredient_line(line: str) -> ParsedLine:
             unit = UNIT_LOOKUP[words[0].lower()]
             rest = " ".join(words[1:])
 
-    # Zusatz nach Komma
-    if "," in rest:
-        rest, after = rest.split(",", 1)
-        if after.strip():
-            notes.append(after.strip())
-
     rest = rest.strip()
     m = _OPTIONAL_PREFIX.match(rest)
     if m:
         notes.insert(0, m.group(1))
         rest = rest[m.end() :]
+    body = rest.strip(" -–:;.")
+    base_notes = tuple(notes)
+
+    # Zusatz nach Komma
+    if "," in rest:
+        rest, after = rest.split(",", 1)
+        if after.strip():
+            notes.append(after.strip())
 
     name = rest.strip(" -–:;.") or original
     return ParsedLine(
@@ -182,6 +188,8 @@ def parse_ingredient_line(line: str) -> ParsedLine:
         unit=unit,
         name=name,
         note=", ".join(notes) or None,
+        body=body,
+        base_notes=base_notes,
     )
 
 

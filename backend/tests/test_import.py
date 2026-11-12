@@ -163,3 +163,50 @@ def test_ssrf_blocked_after_redirect(server):
             fetch(f"{server}/weiter", timeout=2, max_bytes=100_000)
     finally:
         ng._check_url = original
+
+
+def _preview(db, *lines):
+    from delikatessen.importer import preview_ingredients
+
+    return [
+        (i["name"], i["ingredient_name"], i["amount"], i["unit"], i["note"])
+        for i in preview_ingredients(db, list(lines))
+    ]
+
+
+def test_combined_lines_are_split(db):
+    assert _preview(db, "Salz und Pfeffer") == [
+        ("Salz", "Salz", None, None, None),
+        ("Pfeffer", "Pfeffer", None, None, None),
+    ]
+    assert _preview(db, "Pfeffer & Salz") == [
+        ("Pfeffer", "Pfeffer", None, None, None),
+        ("Salz", "Salz", None, None, None),
+    ]
+    # Komma, beschreibende Wörter vor der Zutat, Zusatz in Klammern
+    assert _preview(db, "Salz, frisch gemahlener Pfeffer und Muskat (nach Geschmack)") == [
+        ("Salz", "Salz", None, None, "nach Geschmack"),
+        ("Pfeffer", "Pfeffer", None, None, "nach Geschmack, frisch gemahlener"),
+        ("Muskat", "Muskatnuss", None, None, "nach Geschmack"),
+    ]
+    # Prise gilt je Zutat, Gramm nur zusammen
+    assert _preview(db, "1 Prise Salz und Pfeffer") == [
+        ("Salz", "Salz", 1, "Prise", None),
+        ("Pfeffer", "Pfeffer", 1, "Prise", None),
+    ]
+    assert _preview(db, "300 g Erbsen und Möhren") == [
+        ("Erbsen", "Erbsen", None, None, "zusammen 300 g"),
+        ("Möhren", "Karotte", None, None, "zusammen 300 g"),
+    ]
+
+
+def test_lines_that_stay_whole(db):
+    # Zusatz nach dem Komma ist keine Zutat
+    assert _preview(db, "2 Zehen Knoblauch, gehackt") == [("Knoblauch", "Knoblauch", 2, "Zehe", "gehackt")]
+    # Alternativen werden nicht getrennt
+    assert len(_preview(db, "Butter oder Margarine")) == 1
+    assert len(_preview(db, "Öl/Butter")) == 1
+    # nur ein Teil bekannt: lieber ganz lassen und von Hand zuordnen
+    assert _preview(db, "Salz und Drachenfrucht") == [("Salz und Drachenfrucht", None, None, None, None)]
+    # ganzer Name im Katalog: nicht zerlegen
+    assert _preview(db, "Passierte Tomaten") == [("Passierte Tomaten", "Passierte Tomaten", None, None, None)]

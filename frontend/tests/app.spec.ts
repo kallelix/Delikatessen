@@ -67,10 +67,15 @@ test("Rezepte von Hand anlegen, mit Zuordnung zum Katalog", async () => {
     ["400", "ml", "Sahne"],
   ]);
   await shots("03-rezept");
-  // Portionen umrechnen (F-02)
+  // Portionen umrechnen (F-02): Standard ist die Familie, Anna 1 + Ida 0,5, das Rezept ist für 4
+  await expect(page.locator(".portions output")).toHaveText("1,5");
+  await expect(page.getByText("Für die Familie. Das Rezept ist für 4 angegeben.")).toBeVisible();
+  await expect(page.locator(".ingredients li").first()).toContainText("0,45 kg");
   await page.getByRole("button", { name: "Mehr Portionen" }).click();
   await page.getByRole("button", { name: "Mehr Portionen" }).click();
-  await expect(page.locator(".ingredients li").first()).toContainText("1,8 kg");
+  await expect(page.locator(".ingredients li").first()).toContainText("1,05 kg");
+  await page.getByRole("button", { name: "Für die Familie (1,5)" }).click();
+  await expect(page.locator(".portions output")).toHaveText("1,5");
   await createRecipe("Nudeln mit Pesto", "Hauptmahlzeit", [["500", "g", "Spaghetti"]]);
   await createRecipe("Walnussbrot", "Kleine Mahlzeit", [["100", "g", "Walnuss"]]);
   await createRecipe("Obstsalat", "Kleine Mahlzeit", [["2", "Stück", "Apfel"]]);
@@ -131,6 +136,7 @@ test("Kochansicht mit großen Schritten", async () => {
   await page.locator(".recipe-card", { hasText: "Kartoffelgratin" }).click();
   await page.getByRole("link", { name: "Kochen starten" }).click();
   await expect(page.getByText("Schritt 1 von 3")).toBeVisible();
+  await expect(page.getByText("Zutaten für 1,5")).toBeVisible();
   await page.getByRole("button", { name: "Weiter" }).click();
   await expect(page.locator(".cook-text")).toHaveText("Kochen");
   await shots("06-kochen");
