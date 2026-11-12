@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import __version__, appsettings
+from .. import __version__, appsettings, ki
 from ..config import Settings
 from ..models import Ingredient, IngredientGroup, Person, PersonNoGo
 from .deps import current_person, get_db, get_settings, require_adult
@@ -128,7 +128,7 @@ def status(db: Session = Depends(get_db), settings: Settings = Depends(get_setti
         "datenbank": "ok",
         "dienste": {
             "bring": bring.status(db, settings),
-            "ki": {"aktiv": False, "hinweis": "kommt mit Stufe 2"},
+            "ki": ki.status(settings),
             "push": {"aktiv": False, "hinweis": "kommt mit Stufe 2"},
         },
     }

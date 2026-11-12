@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
+from .. import ki
 from ..config import Settings
-from ..images import ImageError, save_image
-from ..importer import download_image
+from ..images import MAX_UPLOAD, ImageError, prepare_for_ki, save_image
+from ..importer import download_image, photo_dir
 from ..models import ImportJob
 from .deps import get_db, get_settings
 from .recipes import create_recipe, detail
@@ -28,11 +30,58 @@ def job_out(job: ImportJob) -> ImportOut:
     )
 
 
+MAX_PHOTOS = 4
+
+
+def require_ki(settings: Settings) -> None:
+    """Text und Fotos gehen nur mit KI. Ein erschöpftes Budget meldet die App sofort (AK-25)."""
+    s = ki.status(settings)
+    if not settings.ki_configured:
+        raise HTTPException(409, "Import aus Text und Fotos braucht den KI-Dienst, der ist nicht eingerichtet")
+    if not s["aktiv"]:
+        raise HTTPException(409, ki.MSG_BUDGET)
+
+
 @router.post("/imports", response_model=ImportOut, status_code=202)
-def post_import(data: ImportIn, request: Request, db: Session = Depends(get_db)):
-    job = ImportJob(kind=data.kind, source=str(data.url), status="wartet")
+def post_import(
+    data: ImportIn, request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)
+):
+    if data.kind == "text":
+        require_ki(settings)
+        job = ImportJob(kind="text", source=data.text.strip(), status="wartet")
+    else:
+        job = ImportJob(kind="link", source=str(data.url), status="wartet")
     db.add(job)
     db.commit()
+    request.app.state.imports.submit(job.id)
+    return job_out(job)
+
+
+@router.post("/imports/foto", response_model=ImportOut, status_code=202)
+async def post_photo_import(
+    request: Request,
+    bilder: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    """Bis zu vier Fotos eines Rezepts (D-FOTO). Sie liegen nur bis zur Auswertung auf dem Server."""
+    require_ki(settings)
+    if not 1 <= len(bilder) <= MAX_PHOTOS:
+        raise HTTPException(422, f"Bitte ein bis {MAX_PHOTOS} Fotos")
+    prepared = []
+    for f in bilder:
+        raw = await f.read(MAX_UPLOAD + 1)
+        try:
+            prepared.append(await run_in_threadpool(prepare_for_ki, raw))
+        except ImageError as e:
+            raise HTTPException(422, str(e)) from e
+    job = ImportJob(kind="foto", source=f"{len(prepared)} Foto{'s' if len(prepared) > 1 else ''}", status="wartet")
+    db.add(job)
+    db.commit()
+    folder = photo_dir(settings, job.id)
+    folder.mkdir(parents=True, exist_ok=True)
+    for i, data in enumerate(prepared):
+        (folder / f"{i}.jpg").write_bytes(data)
     request.app.state.imports.submit(job.id)
     return job_out(job)
 

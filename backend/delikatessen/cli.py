@@ -1,4 +1,4 @@
-"""Kommandozeile: serve, migrate, backup, restore."""
+"""Kommandozeile: serve, migrate, backup, restore, ki-pruefen."""
 
 from __future__ import annotations
 
@@ -95,11 +95,43 @@ def _safe_extract(tar: tarfile.TarFile, target: Path) -> None:
     tar.extractall(target)
 
 
+SAMPLE = """Kartoffelsuppe für 4 Personen, 40 Minuten
+800 g Kartoffeln
+1 Zwiebel, gewürfelt
+1 l Gemüsebrühe
+Salz und Pfeffer
+Zwiebel andünsten, Kartoffeln und Brühe dazu, 20 Minuten kochen, pürieren, abschmecken."""
+
+
+def cmd_ki_pruefen(_args) -> None:
+    """AK-24: kommt die strukturierte Antwort über das Gateway im festgelegten Schema an?"""
+    from . import ki
+
+    settings = get_settings()
+    if not settings.ki_configured:
+        sys.exit("DELIKATESSEN_KI_BASE_URL und DELIKATESSEN_KI_API_KEY fehlen in /etc/delikatessen/env")
+    print(f"Gateway {settings.ki_base_url}, Modell-Alias {settings.ki_model}, Ausgabe {settings.ki_structured}")
+    try:
+        recipe = ki.KiClient(settings).extract(text=SAMPLE, tag_names=["vegetarisch"])
+    except ki.KiError as e:
+        sys.exit(f"Fehlgeschlagen: {e}")
+    names = [i.name for i in recipe.ingredients]
+    print(f"Antwort im Schema: {recipe.title}, {recipe.servings} Portionen, {recipe.duration_min} Minuten")
+    print(f"Zutaten: {', '.join(names)}")
+    ok = recipe.found and recipe.servings == 4 and {"Salz", "Pfeffer"} <= set(names) and len(names) >= 5
+    print("AK-24 erfüllt" if ok else "Antwort im Schema, aber inhaltlich unerwartet, bitte ansehen")
+    budget = ki.budget(settings)
+    if budget:
+        print(f"Budget: {budget.spend:.2f} von {budget.max_budget} USD")
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     # keine abgerufenen Rezeptadressen und keine Migrationsdetails im Journal (Abschnitt 11)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("alembic").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
+    logging.getLogger("anthropic").setLevel(logging.WARNING)
     parser = argparse.ArgumentParser(prog="delikatessen")
     sub = parser.add_subparsers(required=True)
 
@@ -119,6 +151,9 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("restore", help="Sicherung zurückspielen (Dienst vorher stoppen)")
     p.add_argument("source")
     p.set_defaults(func=cmd_restore)
+
+    p = sub.add_parser("ki-pruefen", help="KI-Gateway mit einem Beispielrezept prüfen (AK-24)")
+    p.set_defaults(func=cmd_ki_pruefen)
 
     args = parser.parse_args(argv)
     args.func(args)

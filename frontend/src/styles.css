@@ -208,9 +208,52 @@ input[type="range"] {
   font-size: 1.2rem;
   flex: 1;
 }
-.btn:disabled {
+.btn:disabled,
+label.btn.disabled {
   opacity: 0.5;
   cursor: default;
+}
+.btn.recording {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 1rem;
+}
+.photo-strip {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.photo-strip li {
+  position: relative;
+}
+.photo-strip img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.photo-strip .icon-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--surface);
+  min-width: 36px;
+  min-height: 36px;
+}
+.diktat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 .icon-btn {
   display: inline-grid;

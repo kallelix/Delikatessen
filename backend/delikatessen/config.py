@@ -5,6 +5,7 @@ from __future__ import annotations
 import ipaddress
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,8 +29,23 @@ class Settings(BaseSettings):
     allow_private_fetch: bool = False
     # Schlüssel für Zugangsdaten in der Datenbank, etwa Bring! (Abschnitt 11). install.sh erzeugt ihn.
     secret_key: str | None = None
+    # KI über das Gateway (Abschnitt 7). Ohne Adresse und Schlüssel läuft die App ohne KI.
+    ki_base_url: str | None = None
+    # Virtueller Schlüssel des Gateways mit Monatsbudget, nie der Master-Key
+    ki_api_key: str | None = None
+    # Alias im Gateway, Modellwechsel nur dort
+    ki_model: str = "rezept-extraktion"
+    ki_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    # output_config = strukturierte Ausgabe mit JSON-Schema. none = nur Prüfung in der App, falls das
+    # Gateway das Feld nicht durchreicht (AK-24, Risiko in Abschnitt 13)
+    ki_structured: Literal["output_config", "none"] = "output_config"
+    ki_timeout_s: float = 180.0
 
-    @field_validator("frontend_dir", mode="before")
+    @property
+    def ki_configured(self) -> bool:
+        return bool(self.ki_base_url and self.ki_api_key)
+
+    @field_validator("frontend_dir", "secret_key", "ki_base_url", "ki_api_key", mode="before")
     @classmethod
     def _empty_is_none(cls, v):
         return v or None

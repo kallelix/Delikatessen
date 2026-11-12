@@ -34,6 +34,25 @@ def save_image(data: bytes, image_dir: Path) -> str:
         raise ImageError("Die Datei ist kein lesbares Bild") from e
 
 
+KI_MAX_EDGE = 1568
+
+
+def prepare_for_ki(data: bytes) -> bytes:
+    """Foto für den KI-Import: gedreht, verkleinert, als JPEG neu kodiert und damit ohne EXIF (N-11)."""
+    if len(data) > MAX_UPLOAD:
+        raise ImageError("Das Bild ist zu groß")
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img = ImageOps.exif_transpose(img)
+            img.thumbnail((KI_MAX_EDGE, KI_MAX_EDGE))
+            img = img.convert("RGB")
+            out = io.BytesIO()
+            img.save(out, "JPEG", quality=85)
+            return out.getvalue()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as e:
+        raise ImageError("Die Datei ist kein lesbares Bild") from e
+
+
 def delete_image(name: str | None, image_dir: Path) -> None:
     if name:
         (image_dir / name).unlink(missing_ok=True)

@@ -1,0 +1,16 @@
+# Ein Alias je Aufgabe. Modellwechsel nur hier, die App kennt nur den Alias (Abschnitt 2).
+model_list:
+  - model_name: rezept-extraktion
+    litellm_params:
+      model: anthropic/claude-opus-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+litellm_settings:
+  # Gateway ohne Speicherung von Prompts und Antworten (Abschnitt 11): Rezepttexte und Fotos bleiben nicht liegen
+  turn_off_message_logging: true
+
+general_settings:
+  # Nur für die Verwaltung im Gateway. Die App bekommt einen virtuellen Schlüssel mit Budget, nie diesen.
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_prompts_in_spend_logs: false

@@ -1,0 +1,41 @@
+# KI-Gateway für Delikatessen (Pflichtenheft Abschnitt 2 und 11): LiteLLM mit PostgreSQL für Budgets.
+# Läuft im eigenen LXC "ki-gateway" mit Docker (Option nesting). Eingehend nur vom delikatessen-LXC auf Port 4000.
+#
+# Images sind auf Version und Digest festgelegt und werden nicht automatisch aktualisiert.
+# Neue Version: Tag und Digest bewusst ändern, Changelog lesen, danach "delikatessen ki-pruefen" (AK-24).
+
+services:
+  litellm:
+    # LiteLLM v1.108.5 (LTS), Variante mit Datenbankanbindung
+    image: ghcr.io/berriai/litellm-database:v1.108.5@sha256:5e5f6cddbbf15e44538081caec703dc56501c91ad2f574cb1ad4fc68714bcce7
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@db:5432/litellm
+      # keine Telemetrie an Dritte
+      LITELLM_TELEMETRY: "False"
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-bookworm@sha256:665dc7b37ac52a17e298511414c21d23ffa4e6a6ef6225b3e5d59c7afb35e994
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_DB: litellm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  pgdata:

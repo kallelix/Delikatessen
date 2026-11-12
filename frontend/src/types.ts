@@ -181,6 +181,21 @@ export interface ImportResult {
   ingredients?: PreviewIngredient[];
   image_url?: string | null;
   source_url?: string;
+  /** von der KI vorgeschlagene, vorhandene Tags */
+  tag_ids?: number[];
+  /** Ergebnis stammt aus der KI-Auswertung */
+  ki?: boolean;
+}
+
+export interface ServiceStatus {
+  aktiv: boolean;
+  hinweis: string;
+}
+
+export interface Status {
+  version: string;
+  datenbank: string;
+  dienste: Record<string, ServiceStatus>;
 }
 
 export interface ImportJob {

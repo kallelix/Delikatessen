@@ -112,3 +112,55 @@ Teilen, Push, Wake Lock und Offline lassen sich nur auf echten Android-Geräten 
 | AK-14 | `test_ak14_new_suggestion_never_repeats` | automatisch |
 
 Für AK-06 lohnt es sich, zehn echte Rezeptseiten, die die Familie nutzt, als HTML unter `backend/tests/fixtures/rezeptseiten/` abzulegen. Wegen der Urheberrechte bleiben sie besser außerhalb des öffentlichen Repositorys oder werden auf das Schema-Markup gekürzt.
+
+## 8. Stufe 2: Bring!
+
+Die Einkaufsliste geht nur auf Knopfdruck an Bring!. Fällt Bring! aus, bleibt die Liste in der App vollständig nutzbar (AK-21).
+
+1. Ein eigenes Bring!-Konto für die App anlegen und die Familienliste in der Bring!-App mit diesem Konto teilen. So sieht man in Bring!, was die App eingetragen hat, und das Familienpasswort bleibt aus dem Spiel.
+2. In der App unter „Mehr“ › „Einstellungen“ › „Bring!“ E-Mail und Passwort dieses Kontos eintragen. Die App meldet sich zur Probe an, speichert das Passwort verschlüsselt und bietet die Listen zur Auswahl an.
+
+Den Schlüssel für die Verschlüsselung (`DELIKATESSEN_SECRET_KEY`) legt `install.sh` bzw. `update.sh` beim ersten Lauf mit Stufe 2 in `/etc/delikatessen/env` an. Geht er verloren, muss das Bring!-Passwort neu eingegeben werden, sonst nichts.
+
+`bring-api` ist eine inoffizielle Bibliothek und exakt auf eine Version festgelegt. Meldet die App „vermutlich hat sich die Schnittstelle geändert“, Bring! in den Einstellungen abschalten und auf ein Update warten.
+
+## 9. Stufe 2: KI-Gateway
+
+Fotos, Texte, Diktate und Seiten ohne Rezeptdaten liest die KI. Alle Anfragen laufen über ein eigenes Gateway (LiteLLM), das den Anthropic-Schlüssel hält und ein Monatsbudget erzwingt. Die App bekommt nur einen virtuellen Schlüssel mit Budget.
+
+**Container anlegen:** Debian 12 oder 13, 1 vCPU, 4 GB RAM, 20 GB, unprivilegiert mit der Option `nesting` für Docker. Firewall: eingehend nur Port 4000 vom delikatessen-LXC, ausgehend nur HTTPS.
+
+```bash
+apt install -y docker.io docker-compose-plugin git
+git clone https://github.com/kallelix/Delikatessen.git /opt/delikatessen-src
+cd /opt/delikatessen-src/deploy/ki-gateway
+cp env.example .env && chmod 600 .env    # Schlüssel eintragen, siehe Kommentare
+docker compose up -d
+```
+
+**Schlüssel für die App mit Budget anlegen** (Beispiel 5 US-Dollar je 30 Tage):
+
+```bash
+curl -s -X POST http://localhost:4000/key/generate \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" -H "Content-Type: application/json" \
+  -d '{"models":["rezept-extraktion"],"max_budget":5,"budget_duration":"30d","key_alias":"delikatessen"}'
+```
+
+Den Wert von `key` im delikatessen-LXC in `/etc/delikatessen/env` als `DELIKATESSEN_KI_API_KEY` eintragen, dazu `DELIKATESSEN_KI_BASE_URL=http://<Adresse des Gateways>:4000`, dann `sudo systemctl restart delikatessen`.
+
+**AK-24 prüfen**, bevor die Familie die KI nutzt:
+
+```bash
+sudo systemd-run --pipe --wait -p User=delikatessen -p EnvironmentFile=/etc/delikatessen/env \
+  /opt/delikatessen/current/venv/bin/delikatessen ki-pruefen
+```
+
+Der Befehl schickt ein kurzes Beispielrezept durch das Gateway und meldet „AK-24 erfüllt“, wenn die Antwort im festgelegten Schema ankommt. Mit einem Nachbau der Anthropic-API wurde schon geprüft, dass LiteLLM v1.108.5 `output_config` samt Schema unverändert weiterreicht. Offen ist nur, ob die echte API die Anfrage so annimmt: Das Gateway setzt zusätzlich den Header `anthropic-beta: structured-outputs-2025-11-13`. Scheitert die Prüfung, in `/etc/delikatessen/env` `DELIKATESSEN_KI_STRUCTURED=none` setzen. Dann steht das Schema im Prompt, und die App prüft jede Antwort selbst.
+
+| Thema | Festlegung |
+| --- | --- |
+| Modell | Alias `rezept-extraktion` in `litellm-config.yaml`, Vorgabe `claude-opus-5-5`. Wechsel nur dort, danach `docker compose restart litellm` und `ki-pruefen` |
+| Budget | Hängt am Schlüssel der App. Ändern nur im Gateway mit dem Master-Key. Ist es aufgebraucht, zeigt die App einen Hinweis, alles ohne KI läuft weiter (AK-25) |
+| Datenschutz | An die KI gehen nur Rezepttext und Fotos, ohne EXIF und verkleinert (N-11). Das Gateway speichert keine Prompts (`turn_off_message_logging`) |
+| Updates | Images sind auf Version und Digest festgelegt. Ein Update ist eine bewusste Änderung an `docker-compose.yml`, nie automatisch |
+| Kosten | Unter „Mehr“ › „Status der Dienste“ zeigt die App den Verbrauch des Monats |

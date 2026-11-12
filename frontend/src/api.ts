@@ -15,6 +15,7 @@ import type {
   RecipeInput,
   RecipeSummary,
   ShoppingItem,
+  Status,
   Tag,
 } from "./types";
 
@@ -140,6 +141,12 @@ export const api = {
 
   // Import
   startImport: (url: string) => request<ImportJob>("POST", "/imports", { kind: "link", url }),
+  startTextImport: (text: string) => request<ImportJob>("POST", "/imports", { kind: "text", text }),
+  startPhotoImport: (files: Blob[]) => {
+    const fd = new FormData();
+    files.forEach((f, i) => fd.append("bilder", f, `foto-${i}.jpg`));
+    return request<ImportJob>("POST", "/imports/foto", fd);
+  },
   importJob: (id: number) => request<ImportJob>("GET", `/imports/${id}`),
   acceptImport: (id: number, recipe: RecipeInput, image_url?: string | null) =>
     request<Recipe>("POST", `/imports/${id}/accept`, { recipe, image_url: image_url ?? null }),
@@ -159,5 +166,5 @@ export const api = {
   deleteBringAccount: () => request<BringSettings>("DELETE", "/bring/account"),
   bringLists: () => request<BringList[]>("GET", "/bring/lists"),
   sendToBring: (start: string) => request<BringTransfer>("POST", `/plans/${start}/shopping/bring`),
-  status: () => request<{ version: string; datenbank: string; dienste: Record<string, { aktiv: boolean; hinweis: string }> }>("GET", "/status"),
+  status: () => request<Status>("GET", "/status"),
 };

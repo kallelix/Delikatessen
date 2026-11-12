@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from ..units import normalize_unit
 
@@ -280,8 +280,18 @@ class ShoppingPatch(BaseModel):
 
 
 class ImportIn(BaseModel):
-    kind: Literal["link"] = "link"
-    url: HttpUrl
+    kind: Literal["link", "text"] = "link"
+    url: HttpUrl | None = None
+    # eingefügter oder diktierter Rezepttext (D-SPR)
+    text: str | None = Field(None, max_length=20_000)
+
+    @model_validator(mode="after")
+    def _source(self):
+        if self.kind == "link" and self.url is None:
+            raise ValueError("Für einen Link-Import fehlt die Adresse")
+        if self.kind == "text" and not (self.text and self.text.strip()):
+            raise ValueError("Der Text ist leer")
+        return self
 
 
 class ImportOut(BaseModel):

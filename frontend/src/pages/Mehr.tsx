@@ -57,7 +57,7 @@ export function Mehr() {
           </li>
           {Object.entries(status.data.dienste).map(([name, s]) => (
             <li key={name}>
-              {name === "bring" ? "Bring!" : name === "ki" ? "KI" : "Benachrichtigungen"}: {s.aktiv ? "aktiv" : s.hinweis}
+              {name === "bring" ? "Bring!" : name === "ki" ? "KI" : "Benachrichtigungen"}: {s.aktiv ? `aktiv${s.hinweis ? `, ${s.hinweis}` : ""}` : s.hinweis}
             </li>
           ))}
         </ul>

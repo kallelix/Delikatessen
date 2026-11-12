@@ -235,3 +235,21 @@ test("Einstellungen: Bring! verbinden, Liste bleibt ohne Bring! nutzbar", async 
   await expect(page.getByRole("button", { name: "Als Text teilen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "An Bring! senden" })).toHaveCount(0);
 });
+
+test("AK-23: Text aus Diktat oder Einfügen endet in der Vorschau", async () => {
+  await page.goto("/neu");
+  await expect(page.getByRole("button", { name: "Fotos auswerten" })).toBeDisabled();
+  await page.getByLabel("Rezepttext").fill("Linsensuppe für vier Personen: 250 g rote Linsen, 1 Zwiebel, Salz und Pfeffer …");
+  await page.getByRole("button", { name: "Text auswerten" }).click();
+  await expect(page.getByRole("heading", { name: "Import prüfen" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Von der KI gelesen")).toBeVisible();
+  await expect(page.getByLabel("Titel")).toHaveValue("Linsensuppe");
+  await shots("11-ki-vorschau");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByRole("heading", { name: "Linsensuppe" })).toBeVisible();
+});
+
+test("Status zeigt KI-Budget aus dem Gateway", async () => {
+  await page.goto("/mehr");
+  await expect(page.getByText("KI: aktiv, 0,42 von 5,00 USD diesen Monat")).toBeVisible();
+});

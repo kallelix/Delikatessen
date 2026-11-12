@@ -15,6 +15,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pillow>=10.4",
     "recipe-scrapers>=15.0",
+    "beautifulsoup4>=4.12",
     # Stufe 2: Bring! ist inoffiziell und deshalb exakt gepinnt (Abschnitt 2)
     "bring-api==1.1.2",
     "cryptography>=43",
@@ -50,3 +51,7 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Der Prompt ist Fließtext und wird nicht umbrochen
+"delikatessen/ki.py" = ["E501"]
