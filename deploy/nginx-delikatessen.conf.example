@@ -9,9 +9,12 @@ server {
     ssl_certificate     /etc/letsencrypt/live/example.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.org/privkey.pem;
 
-    # Nur Geräte im NetBird. Netz aus dem NetBird-Dashboard (Settings › Networks), Vorgabe liegt in 100.64.0.0/10.
+    # Nur Geräte im NetBird. Der NetBird-Container ist Routing-Peer mit Masquerade (Vorgabe),
+    # die Handys kommen deshalb mit seiner LAN-Adresse an (docs/betrieb.md, Abschnitt 3).
     # Alle anderen bekommen 403, auch Geräte im Heimnetz ohne NetBird.
-    allow 100.64.0.0/10;
+    allow 192.0.2.30;          # LAN-Adresse des NetBird-Containers
+    # allow 192.0.2.0/24;      # nur falls die App im Heimnetz auch ohne NetBird gehen soll
+    # allow 100.64.0.0/10;     # statt dessen, wenn nginx selbst NetBird-Peer ist oder Masquerade aus ist
     deny all;
 
     # Import per Foto: bis zu 4 Fotos mit je bis zu 15 MB in einer Anfrage

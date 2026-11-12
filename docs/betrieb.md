@@ -2,7 +2,7 @@
 
 Stand: 2026-11-11
 
-Stufe 1 braucht einen neuen Debian-LXC und den vorhandenen nginx-LXC mit NetBird. Nichts wird ins Internet freigegeben.
+Stufe 1 braucht einen neuen Debian-LXC, den vorhandenen nginx-LXC und den Zugang über NetBird. Nichts wird ins Internet freigegeben.
 
 ## 1. Container anlegen
 
@@ -25,7 +25,7 @@ sudo bash install.sh     # neuestes Release, oder: sudo bash install.sh v0.2.0
 
 Das Skript ist wiederholbar. Es legt den Nutzer `delikatessen`, die Python-Umgebung unter `/opt/delikatessen/releases/<Version>`, die Konfiguration `/etc/delikatessen/env`, den Dienst und den Sicherungs-Timer an. Pakete installiert es nur mit den Hashes aus der Lockdatei.
 
-Danach in `/etc/delikatessen/env` die Adresse des nginx-LXC bei `DELIKATESSEN_TRUSTED_PROXIES` eintragen und `sudo systemctl restart delikatessen` ausführen. Nur von dieser Adresse akzeptiert die App `X-Forwarded-For`, sonst ließe sich die Profilzuordnung über die NetBird-IP fälschen.
+Danach in `/etc/delikatessen/env` die Adresse des nginx-LXC bei `DELIKATESSEN_TRUSTED_PROXIES` eintragen und `sudo systemctl restart delikatessen` ausführen. Nur von dieser Adresse akzeptiert die App `X-Forwarded-For`, sonst ließe sich die Herkunftsadresse fälschen.
 
 | Pfad | Inhalt |
 | --- | --- |
@@ -40,16 +40,16 @@ Protokolle: `journalctl -u delikatessen`. Rezepttexte, Bilder und abgerufene Lin
 
 Vorlage: [deploy/nginx-delikatessen.conf.example](../deploy/nginx-delikatessen.conf.example). Wichtig sind `allow`/`deny` für das NetBird-Netz, `proxy_set_header X-Forwarded-For` und `client_max_body_size 64m` für bis zu 4 Fotos. Ein vorhandenes Wildcard-Zertifikat passt. HTTPS ist auch im NetBird Pflicht, weil der Browser sonst Installation, Offline-Lesen, Teilen-Menü, Push, Diktat und „Bildschirm bleibt an“ sperrt (N-04).
 
-**Nur im NetBird erreichbar**, auch wenn derselbe nginx andere Seiten ins Internet ausliefert:
+**Nur im NetBird erreichbar**, auch wenn derselbe nginx andere Seiten ins Internet ausliefert. Aufbau: Ein eigener NetBird-Container ist Routing-Peer ins Heimnetz (Route mit Masquerade, die NetBird-Vorgabe). Die Handys erreichen den nginx-LXC über dessen LAN-Adresse und kommen dort mit der LAN-Adresse des NetBird-Containers an.
 
-- Im Server-Block nur das NetBird-Netz zulassen (`allow`/`deny` in der Vorlage). Das setzt voraus, dass der nginx-LXC selbst NetBird-Peer ist. Kommen die Geräte über einen Routing-Peer mit Masquerade, sieht nginx nur dessen Adresse.
-- Der Name muss für die Geräte auf die NetBird-IP des nginx-LXC zeigen, nicht auf die öffentliche Adresse, sonst kommt 403. Am einfachsten ein eigener A-Record für den Namen, er hat Vorrang vor einem Wildcard-Eintrag. Alternativ ein DNS-Eintrag in NetBird.
-- In NetBird lässt eine Access Policy nur die Familiengeräte auf Port 443 des nginx-LXC zu.
-- Im delikatessen-LXC Port 8000 nur vom nginx-LXC zulassen (Proxmox-Firewall), sonst ginge es im Heimnetz an nginx vorbei per HTTP.
+- **DNS:** Ein eigener A-Record für den Namen auf die LAN-Adresse des nginx-LXC. Er hat Vorrang vor einem Wildcard-Eintrag, der auf die öffentliche Adresse zeigt. Von außen führt der Name damit ins Leere. Blockt der Router im WLAN die Antwort (DNS-Rebind-Schutz, etwa bei der Fritz!Box), die Domain dort als Ausnahme eintragen.
+- **nginx:** Im Server-Block nur die LAN-Adresse des NetBird-Containers zulassen (`allow`/`deny` in der Vorlage). Soll die App im heimischen WLAN auch ohne NetBird gehen, zusätzlich das Heimnetz zulassen.
+- **NetBird:** Das Heimnetz ist als Route oder Network-Resource über den NetBird-Container freigegeben. Eine Access Policy lässt nur die Familiengeräte auf Port 443 des nginx-LXC zu.
+- **delikatessen-LXC:** Port 8000 nur vom nginx-LXC zulassen (Proxmox-Firewall), sonst ginge es im Heimnetz an nginx vorbei per HTTP.
 
 Die Trennung von Erwachsenen und Kindern in der App ist bewusst nur ein Bedienschutz (N-09).
 
-Optional ordnet die App ein Gerät über seine NetBird-IP automatisch einem Profil zu: unter „Mehr“ › „Familie“ bei der Person eintragen.
+Die automatische Profilzuordnung über die NetBird-IP („Mehr“ › „Familie“) wirkt in diesem Aufbau nicht: Durch Masquerade kommen alle Geräte mit derselben Adresse an. Das Profil wird einmal je Gerät in der App gewählt. Wer die Zuordnung will, schaltet Masquerade an der NetBird-Route ab und gibt dem nginx-LXC eine Rückroute ins NetBird-Netz (`post-up ip route add 100.64.0.0/10 via <LAN-Adresse des NetBird-Containers>` in `/etc/network/interfaces`). Das wirkt dann auf alle Ziele dieser Route. In nginx gilt danach `allow 100.64.0.0/10`.
 
 ## 4. Updates
 
