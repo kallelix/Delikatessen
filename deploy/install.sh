@@ -56,7 +56,8 @@ if [[ -z "$ARCHIVE" ]]; then
   ARCHIVE="$TMP/release.tar.gz"
 fi
 
-tar -xzf "$ARCHIVE" -C "$TMP"
+# ohne die Besitzer aus dem Archiv (Build-Nutzer der CI), sonst gehörte der Programmcode einer fremden UID
+tar --no-same-owner -xzf "$ARCHIVE" -C "$TMP"
 SRC=$(find "$TMP" -mindepth 1 -maxdepth 1 -type d -name 'delikatessen-*' | head -n1)
 [[ -n "$SRC" && -f "$SRC/VERSION" ]] || die "Archiv enthält kein Release"
 VERSION=$(cat "$SRC/VERSION")
@@ -71,6 +72,7 @@ if [[ ! -x "$TARGET/venv/bin/delikatessen" ]]; then
   "$TARGET/venv/bin/pip" install -q --require-hashes -r "$TARGET/requirements.lock"
   "$TARGET/venv/bin/pip" install -q --no-deps "$TARGET"/wheel/delikatessen-*.whl
   "$TARGET/venv/bin/python" -m compileall -q "$TARGET/venv" >/dev/null || true
+  chown -R root:root "$TARGET"
 else
   info "$VERSION ist schon installiert"
 fi
