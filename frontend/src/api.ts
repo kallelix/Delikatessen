@@ -152,7 +152,8 @@ export const api = {
     request<ShoppingItem>("PATCH", `/shopping/items/${id}`, data),
 
   // Import
-  startImport: (url: string) => request<ImportJob>("POST", "/imports", { kind: "link", url }),
+  /** ki: auch Seiten mit Schema-Daten von der KI lesen lassen */
+  startImport: (url: string, ki = false) => request<ImportJob>("POST", "/imports", { kind: "link", url, ki }),
   startTextImport: (text: string) => request<ImportJob>("POST", "/imports", { kind: "text", text }),
   startPhotoImport: (photos: { file: Blob; rot: number }[]) => {
     const fd = new FormData();

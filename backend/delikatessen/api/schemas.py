@@ -322,6 +322,8 @@ class ImportIn(BaseModel):
     url: HttpUrl | None = None
     # eingefügter oder diktierter Rezepttext (D-SPR)
     text: str | None = Field(None, max_length=20_000)
+    # Link auch mit Schema-Daten von der KI lesen lassen (nur bei kind="link")
+    ki: bool = False
 
     @model_validator(mode="after")
     def _source(self):

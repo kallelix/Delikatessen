@@ -256,15 +256,30 @@ def get_image(name: str, settings: Settings = Depends(get_settings)):
 
 @router.get("/ingredients", response_model=list[IngredientOut])
 def list_ingredients(q: str | None = None, limit: int = 500, db: Session = Depends(get_db)):
-    """Autovervollständigung über Name und Aliasse."""
-    stmt = select(Ingredient)
-    if q and q.strip():
-        n = f"%{normalize(q)}%"
-        stmt = stmt.where(func.lower(Ingredient.name).like(n) | Ingredient.aliases.any(IngredientAlias.alias.like(n)))
-    items = db.scalars(stmt.order_by(func.lower(Ingredient.name)).limit(min(limit, 2000))).unique().all()
-    if q and q.strip():
-        nq = normalize(q)
-        items.sort(key=lambda i: (not normalize(i.name).startswith(nq), normalize(i.name)))
+    """Autovervollständigung über Name und Aliasse.
+
+    Findet der ganze Text nichts, sucht sie mit den einzelnen Wörtern von hinten, damit "kleine rote Zwiebel"
+    die Zwiebel vorschlägt.
+    """
+
+    def search(text: str | None) -> list[Ingredient]:
+        stmt = select(Ingredient)
+        if text:
+            n = f"%{text}%"
+            in_alias = Ingredient.aliases.any(IngredientAlias.alias.like(n))
+            stmt = stmt.where(func.lower(Ingredient.name).like(n) | in_alias)
+        items = db.scalars(stmt.order_by(func.lower(Ingredient.name)).limit(min(limit, 2000))).unique().all()
+        if text:
+            items.sort(key=lambda i: (not normalize(i.name).startswith(text), normalize(i.name)))
+        return items
+
+    nq = normalize(q) if q and q.strip() else None
+    items = search(nq)
+    words = nq.split() if nq else []
+    if not items and len(words) > 1:
+        for word in reversed(words):
+            if len(word) >= 3 and (items := search(word)):
+                break
     return [ingredient_out(i) for i in items]
 
 

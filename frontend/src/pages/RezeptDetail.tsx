@@ -78,7 +78,7 @@ export function RezeptDetail() {
       {!r.plannable && (
         <p className="notice">
           Noch nicht planbar: Nicht jede Zutat ist dem Katalog zugeordnet.{" "}
-          <Link to={`/rezepte/${r.id}/bearbeiten`}>Jetzt zuordnen</Link>
+          <Link to={`/rezepte/${r.id}/bearbeiten?zuordnen=1`}>Jetzt zuordnen</Link>
         </p>
       )}
       {r.excluded && <p className="notice">Von der Planung ausgeschlossen.</p>}

@@ -98,6 +98,67 @@ def _split_combined(p: ParsedLine, matcher: Matcher) -> list[tuple[int, str, str
     return out
 
 
+# Beschreibende Wörter vor dem Namen, die beim Zuordnen wegfallen dürfen ("kleine Zwiebel" -> Zwiebel).
+# Bewusst eine feste Liste: "saure Sahne" soll nicht zu Sahne werden.
+_DESCRIPTORS = re.compile(
+    r"^(?:klein|groß|gross|mittelgroß|mittelgross|m\.-groß|m\.-gross|mittler|frisch|reif|fein|grob|gehackt|gemahlen"
+    r"|getrocknet|tk|tiefgekühlt|gefroren|gekocht|geschält|jung|zart|kalt|warm|weich|zimmerwarm|gestrichen"
+    r"|gehäuft|bio|unbehandelt|ungesalzen|gesalzen|vorwiegend|festkochend|mehligkochend)(?:e|er|es|en|em)?$",
+    re.IGNORECASE,
+)
+
+
+def _match_described(matcher: Matcher, name: str) -> tuple[int, str, str | None] | None:
+    """Ordnet Namen mit Beiwerk zu, das dann Zusatz wird:
+
+    - Wörter aus der festen Liste davor oder dahinter: "kleine Zwiebel", "Kartoffeln mehligkochend"
+    - Alternativen nach "oder": "Sahne oder Milch" wird Sahne mit dem Zusatz "oder Milch"
+    """
+    variants: list[tuple[str, str | None]] = [(name, None)]
+    first, *alternative = re.split(r"\s+oder\s+", name, maxsplit=1, flags=re.IGNORECASE)
+    if alternative:
+        variants.append((first, f"oder {alternative[0]}"))
+    for text, extra in variants:
+        words = text.split()
+        lead = 0
+        while lead < len(words) - 1 and _DESCRIPTORS.match(words[lead]):
+            lead += 1
+        trail = len(words)
+        while trail - 1 > lead and _DESCRIPTORS.match(words[trail - 1]):
+            trail -= 1
+        for a, b in ((0, len(words)), (lead, len(words)), (0, trail), (lead, trail)):
+            core = " ".join(words[a:b])
+            ingredient_id = matcher.match(core)
+            if ingredient_id:
+                note = ", ".join(x for x in (" ".join(words[:a]), " ".join(words[b:]), extra) if x)
+                return ingredient_id, core, note or None
+    return None
+
+
+# Zwischenüberschrift in der Zutatenliste: "Für den Teig:", "Soße:", "Zum Garnieren:"
+_HEADING_RE = re.compile(r"^[^\d:]{1,40}:$")
+
+
+def _is_heading(line: str) -> bool:
+    return bool(_HEADING_RE.match(" ".join(line.split())))
+
+
+# Schritt, der nur aus einer Nummerierung besteht: "Schritt 1", "2.", "Step 3:"
+_STEP_ONLY_RE = re.compile(r"^(?:(?:arbeits)?schritt|step)?\s*\d{1,2}\s*[.:)]?$", re.IGNORECASE)
+_STEP_PREFIX_RE = re.compile(r"^(?:(?:arbeits)?schritt|step)\s*\d{1,2}\s*[.:)-]?\s+", re.IGNORECASE)
+
+
+def clean_steps(steps: list[str]) -> list[str]:
+    """Entfernt reine Nummerierungen als eigene Schritte und "Schritt 1:" vor dem Text."""
+    out = []
+    for s in steps:
+        s = " ".join(str(s).split())
+        if not s or _STEP_ONLY_RE.match(s):
+            continue
+        out.append(_STEP_PREFIX_RE.sub("", s) or s)
+    return out
+
+
 def preview_ingredients(session: Session, lines: list[str]) -> list[dict]:
     matcher = Matcher(session)
     out = []
@@ -116,15 +177,22 @@ def preview_ingredients(session: Session, lines: list[str]) -> list[dict]:
         )
 
     for line in lines:
-        if not line or not line.strip():
+        if not line or not line.strip() or _is_heading(line):
             continue
         p = parse_ingredient_line(line)
+        if p.body.endswith(":") and not any(ch.isdigit() for ch in p.body):
+            continue  # Überschrift mit Menge davor: "1 pcs Für den Kartoffelbrei:"
         split = _split_combined(p, matcher)
         if split:
             for ingredient_id, name, note, amount, unit in split:
                 add(p.line, amount, unit, name, note, ingredient_id)
-        else:
-            add(p.line, p.amount, p.unit, p.name, p.note, matcher.match(p.name))
+            continue
+        ingredient_id = matcher.match(p.name)
+        if ingredient_id is None and (described := _match_described(matcher, p.name)):
+            ingredient_id, name, description = described
+            add(p.line, p.amount, p.unit, name, ", ".join(n for n in (description, p.note) if n), ingredient_id)
+            continue
+        add(p.line, p.amount, p.unit, p.name, p.note, ingredient_id)
     return out
 
 
@@ -148,7 +216,7 @@ def extract(session: Session, html: str, url: str) -> tuple[str, dict]:
         "servings": _servings(_safe(lambda: scraper.yields())) or 4,
         "duration_min": int(total) if isinstance(total, (int, float)) and 0 < total < 24 * 60 else None,
         "size": "haupt",
-        "steps": [" ".join(s.split()) for s in steps],
+        "steps": clean_steps(steps),
         "ingredients": preview_ingredients(session, ingredients),
         "image_url": _safe(lambda: scraper.image()),
         "source_url": url,
@@ -162,6 +230,20 @@ def page_text(html: str) -> str:
         tag.decompose()
     lines = (" ".join(line.split()) for line in soup.get_text("\n").splitlines())
     return "\n".join(line for line in lines if line)
+
+
+def schema_text(result: dict) -> str:
+    """Schema-Daten einer Seite als kurzer Text für die KI: billiger und sauberer als die ganze Seite."""
+    parts = [f"Titel: {result['title']}"]
+    if result.get("servings"):
+        parts.append(f"Portionen: {result['servings']}")
+    if result.get("duration_min"):
+        parts.append(f"Gesamtzeit: {result['duration_min']} Minuten")
+    lines = dict.fromkeys(i["line"] for i in result.get("ingredients", []) if i.get("line"))
+    parts.append("Zutaten:\n" + "\n".join(f"- {line}" for line in lines))
+    if result.get("steps"):
+        parts.append("Zubereitung:\n" + "\n".join(result["steps"]))
+    return "\n\n".join(parts)
 
 
 def ki_preview(session: Session, recipe: KiRecipe, source_url: str | None = None) -> dict:
@@ -190,7 +272,7 @@ def ki_preview(session: Session, recipe: KiRecipe, source_url: str | None = None
         "servings": recipe.servings if recipe.servings and 0 < recipe.servings <= 100 else 4,
         "duration_min": recipe.duration_min if recipe.duration_min and 0 < recipe.duration_min < 24 * 60 else None,
         "size": recipe.size or "haupt",
-        "steps": [" ".join(s.split()) for s in recipe.steps if s.strip()],
+        "steps": clean_steps(recipe.steps),
         "tag_ids": sorted({tags[t.lower()] for t in recipe.tags if t.lower() in tags}),
         "ingredients": ingredients,
         "image_url": None,
@@ -234,7 +316,7 @@ def run_job(sm: sessionmaker, settings: Settings, job_id: int, ki_factory=None) 
         session.commit()
         ki_factory = ki_factory or KiClient
         try:
-            if job.kind == "link":
+            if job.kind in ("link", "link_ki"):
                 final_url, body, ctype = fetch(
                     job.source,
                     timeout=settings.fetch_timeout_s,
@@ -243,7 +325,13 @@ def run_job(sm: sessionmaker, settings: Settings, job_id: int, ki_factory=None) 
                 )
                 html = _decode(body, ctype)
                 status, result = extract(session, html, final_url)
-                if status == "ohne_schema" and settings.ki_configured:
+                if job.kind == "link_ki":
+                    # auf Wunsch liest die KI auch Seiten mit Schema-Daten, Fehler brechen dann ab
+                    text = schema_text(result) if status == "fertig" else page_text(html)
+                    recipe = _ki_recipe(session, ki_factory(settings), text=text)
+                    image_url = result.get("image_url")
+                    status, result = "fertig", {**ki_preview(session, recipe, final_url), "image_url": image_url}
+                elif status == "ohne_schema" and settings.ki_configured:
                     # ab Stufe 2: Seiten ohne Rezeptdaten liest die KI (Abschnitt 7)
                     try:
                         recipe = _ki_recipe(session, ki_factory(settings), text=page_text(html))

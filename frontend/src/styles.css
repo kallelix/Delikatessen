@@ -371,6 +371,15 @@ label.btn.disabled {
   background: var(--warn-soft);
   color: var(--warn);
 }
+button.badge {
+  border: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 32px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+}
 
 /* Woche */
 .week-head {

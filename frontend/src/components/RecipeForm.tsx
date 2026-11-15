@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { errorText, useLoad } from "../lib";
 import { formatNumber, parseAmount, UNITS } from "../units";
@@ -49,6 +49,8 @@ export function RecipeForm({
   onSubmit,
   onCancel,
   hint,
+  action,
+  startAtOpen,
 }: {
   initial: RecipeInput;
   initialIngredients?: (RecipeIngredient & { line?: string })[];
@@ -59,6 +61,10 @@ export function RecipeForm({
   onSubmit: (data: RecipeInput, extras: { image: File | null; useRemoteImage: boolean; removeImage: boolean }) => Promise<void>;
   onCancel?: () => void;
   hint?: string;
+  /** Zusätzliche Schaltfläche unter dem Hinweis, etwa „Mit KI neu lesen“ */
+  action?: React.ReactNode;
+  /** Beim Öffnen gleich zur ersten offenen Zutat springen */
+  startAtOpen?: boolean;
 }) {
   const [title, setTitle] = useState(initial.title);
   const [size, setSize] = useState<Size>(initial.size);
@@ -87,11 +93,31 @@ export function RecipeForm({
   }
   const tags = useLoad(() => api.tags(), []);
 
-  const open = rows.filter((r) => r.name.trim() && !r.ingredient_id).length;
+  const isOpen = (r: Row) => !!r.name.trim() && !r.ingredient_id;
+  const open = rows.filter(isOpen).length;
+  const rowEls = useRef(new Map<number, HTMLLIElement>());
 
   function setRow(key: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
+
+  /** Nächste offene Zutat nach der Zeile `after` (sonst von vorn), ohne `after` selbst */
+  function nextOpen(list: Row[], after?: number): number | null {
+    const start = after === undefined ? -1 : list.findIndex((r) => r.key === after);
+    const ordered = [...list.slice(start + 1), ...list.slice(0, Math.max(start, 0))];
+    return ordered.find((r) => r.key !== after && isOpen(r))?.key ?? null;
+  }
+
+  // Die gerade zugeordnete Zeile in die Mitte holen, damit Liste und Tastatur sie nicht verdecken
+  useEffect(() => {
+    if (picking !== null) rowEls.current.get(picking)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [picking]);
+
+  useEffect(() => {
+    if (startAtOpen) setPicking(nextOpen(rows));
+    // nur beim Öffnen
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function addTag() {
     const name = newTag.trim();
@@ -148,6 +174,7 @@ export function RecipeForm({
   return (
     <form className="recipe-form stack" onSubmit={submit} noValidate>
       {hint && <p className="notice">{hint}</p>}
+      {action}
       <label className="field">
         <span>Titel</span>
         <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
@@ -204,12 +231,24 @@ export function RecipeForm({
 
       <fieldset className="field">
         <legend>
-          Zutaten {open > 0 && <span className="badge warn">{open} offen</span>}
+          Zutaten{" "}
+          {open > 0 && (
+            <button type="button" className="badge warn" onClick={() => setPicking(nextOpen(rows))}>
+              {open} offen · zur ersten
+            </button>
+          )}
         </legend>
         {open > 0 && <p className="muted small">Erst wenn alle Zutaten zugeordnet sind, kann der Plan das Rezept wählen.</p>}
         <ul className="plain ing-rows">
           {rows.map((r, idx) => (
-            <li key={r.key} className={`ing-row${r.name.trim() && !r.ingredient_id ? " open" : ""}`}>
+            <li
+              key={r.key}
+              className={`ing-row${isOpen(r) ? " open" : ""}`}
+              ref={(el) => {
+                if (el) rowEls.current.set(r.key, el);
+                else rowEls.current.delete(r.key);
+              }}
+            >
               {r.line && <span className="muted small">Original: {r.line}</span>}
               <div className="ing-inputs">
                 <input className="amount" inputMode="decimal" aria-label={`Menge Zutat ${idx + 1}`} placeholder="Menge"
@@ -230,15 +269,33 @@ export function RecipeForm({
               <input className="note" aria-label={`Zusatz Zutat ${idx + 1}`} placeholder="Zusatz, etwa „gehackt“" value={r.note ?? ""}
                 onChange={(e) => setRow(r.key, { note: e.target.value })} />
               {picking === r.key ? (
-                <IngredientPicker
-                  value={r.name}
-                  label={`Katalogeintrag für ${r.name || "Zutat"}`}
-                  autoFocus
-                  onPick={(ing) => {
-                    setRow(r.key, { ingredient_id: ing.id, catalogName: ing.name, name: r.name.trim() || ing.name, unit: r.unit ?? ing.default_unit });
-                    setPicking(null);
-                  }}
-                />
+                <>
+                  <IngredientPicker
+                    value={r.name}
+                    label={`Katalogeintrag für ${r.name || "Zutat"}`}
+                    autoFocus
+                    onPick={(ing) => {
+                      const updated = rows.map((x) =>
+                        x.key === r.key
+                          ? { ...x, ingredient_id: ing.id, catalogName: ing.name, name: x.name.trim() || ing.name, unit: x.unit ?? ing.default_unit }
+                          : x,
+                      );
+                      setRows(updated);
+                      // gleich weiter zur nächsten offenen Zutat
+                      setPicking(nextOpen(updated, r.key));
+                    }}
+                  />
+                  <div className="inline">
+                    {rows.some((x) => x.key !== r.key && isOpen(x)) && (
+                      <button type="button" className="link-btn small" onClick={() => setPicking(nextOpen(rows, r.key))}>
+                        Überspringen
+                      </button>
+                    )}
+                    <button type="button" className="link-btn small" onClick={() => setPicking(null)}>
+                      Schließen
+                    </button>
+                  </div>
+                </>
               ) : r.ingredient_id ? (
                 <button type="button" className="link-btn small" onClick={() => setPicking(r.key)}>
                   <Icon name="haken" size={16} /> Katalog: {r.catalogName} · ändern

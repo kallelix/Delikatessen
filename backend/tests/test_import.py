@@ -200,6 +200,37 @@ def test_combined_lines_are_split(db):
     ]
 
 
+def test_descriptors_and_headings(db):
+    # Wörter aus der festen Liste fallen beim Zuordnen weg und werden Zusatz
+    assert _preview(db, "1 kleine Zwiebel(n)") == [("Zwiebel", "Zwiebel", 1, None, "kleine")]
+    assert _preview(db, "2 m.-große Kartoffeln, geschält") == [
+        ("Kartoffeln", "Kartoffel", 2, None, "m.-große, geschält")
+    ]
+    # andere Wörter nicht: saure Sahne ist keine Sahne
+    assert _preview(db, "200 g saure Sahne")[0][1] == "Saure Sahne"
+    assert _preview(db, "1 Becher geschlagene Sahne")[0][1] is None
+    # Zwischenüberschriften sind keine Zutaten
+    assert _preview(db, "Für den Teig:", "200 g Mehl", "Soße:", "1 Zwiebel") == [
+        ("Mehl", "Mehl", 200, "g", None),
+        ("Zwiebel", "Zwiebel", 1, None, None),
+    ]
+
+
+def test_step_numbers_are_not_steps():
+    from delikatessen.importer import clean_steps
+
+    steps = [
+        "Schritt 1",
+        "Zwiebeln schneiden.",
+        "Schritt 2:",
+        "Anbraten.",
+        "3.",
+        "Step 4: Servieren.",
+        "Schritt für Schritt rühren.",
+    ]
+    assert clean_steps(steps) == ["Zwiebeln schneiden.", "Anbraten.", "Servieren.", "Schritt für Schritt rühren."]
+
+
 def test_lines_that_stay_whole(db):
     # Zusatz nach dem Komma ist keine Zutat
     assert _preview(db, "2 Zehen Knoblauch, gehackt") == [("Knoblauch", "Knoblauch", 2, "Zehe", "gehackt")]
@@ -210,3 +241,41 @@ def test_lines_that_stay_whole(db):
     assert _preview(db, "Salz und Drachenfrucht") == [("Salz und Drachenfrucht", None, None, None, None)]
     # ganzer Name im Katalog: nicht zerlegen
     assert _preview(db, "Passierte Tomaten") == [("Passierte Tomaten", "Passierte Tomaten", None, None, None)]
+
+
+def test_creative_page(client, server):
+    """Testseite mit Zwischenüberschriften, Mengen hinter dem Namen und "Schritt 1" als eigener Zeile."""
+    job = run_import(client, f"{server}/kreativ.html")
+    assert job["status"] == "fertig", job
+    res = job["result"]
+    assert res["steps"] == [
+        "Mehl, Eier und Butter zu einem Teig kneten.",
+        "Zwiebel, Drachenfrucht und Mondbohnen hacken, einfüllen und backen.",
+    ]
+    rows = [(i["name"], i["ingredient_name"], i["amount"], i["unit"], i["note"]) for i in res["ingredients"]]
+    assert rows == [
+        ("Mehl", "Mehl", 250, "g", None),
+        ("Ei", "Ei", 2, None, None),
+        ("Butter", "Butter", 50, "g", None),
+        ("Zwiebel", "Zwiebel", 1, None, "kleine"),
+        ("Drachenfrucht", None, 1, "Stück", None),
+        ("Mondbohnen", None, 100, "g", None),
+        ("Salz", "Salz", None, None, "nach Belieben"),
+    ]
+
+
+def test_lines_from_iglo(db):
+    """Zeilen wie auf iglo.de (15.11.2026): Einheit pcs, Großschreibung, Überschrift mit Menge, Alternativen."""
+    assert _preview(
+        db,
+        "1 pcs Fischstäbchen",
+        "1 pcs Für Den Kartoffelbrei:",
+        "0.5 kg Kartoffeln Mehligkochend Oder Vorwiegend Festkochend",
+        "100 ml Sahne Oder Milch",
+        "0.5 TL Salz Oder Nach Geschmack",
+    ) == [
+        ("Fischstäbchen", "Fischstäbchen", 1, "Stück", None),
+        ("Kartoffeln", "Kartoffel", 0.5, "kg", "Mehligkochend, oder Vorwiegend Festkochend"),
+        ("Sahne", "Sahne", 100, "ml", "oder Milch"),
+        ("Salz", "Salz", 0.5, "TL", "Nach Geschmack"),
+    ]

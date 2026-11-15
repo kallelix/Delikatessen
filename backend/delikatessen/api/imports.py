@@ -52,6 +52,10 @@ def post_import(
     if data.kind == "text":
         require_ki(settings)
         job = ImportJob(kind="text", source=data.text.strip(), status="wartet")
+    elif data.ki:
+        # Link mit KI auslesen, auch wenn die Seite Schema-Daten hat
+        require_ki(settings)
+        job = ImportJob(kind="link_ki", source=str(data.url), status="wartet")
     else:
         job = ImportJob(kind="link", source=str(data.url), status="wartet")
     db.add(job)

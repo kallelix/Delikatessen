@@ -3,6 +3,7 @@
 export const UNITS = [
   "g", "kg", "ml", "l", "EL", "TL", "Stück", "Prise", "Bund", "Dose", "Packung", "Zehe", "Scheibe",
   "Becher", "Tasse", "Msp.", "Glas", "Zweig", "Handvoll", "Stange", "Blatt", "Knolle", "Kopf", "Würfel", "Tüte",
+  "Schuss", "Spritzer", "Stiel", "Rolle", "Kugel",
 ];
 
 export function roundAmount(amount: number, unit: string | null): number {

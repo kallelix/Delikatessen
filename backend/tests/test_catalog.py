@@ -40,3 +40,11 @@ def test_seed_is_idempotent(db):
     seed(db)
     assert db.scalar(select(func.count()).select_from(Ingredient)) == before
     assert before > 100
+
+
+def test_search_falls_back_to_single_words(client):
+    names = lambda q: [i["name"] for i in client.get("/api/v1/ingredients", params={"q": q}).json()]  # noqa: E731
+    assert names("zwieb")[0] == "Zwiebel"
+    # ganzer Text findet nichts: einzelne Wörter von hinten
+    assert "Zwiebel" in names("kleine Zwiebel")
+    assert names("xyz qq") == []

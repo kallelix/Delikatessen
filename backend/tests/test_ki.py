@@ -386,6 +386,32 @@ def test_link_without_schema_goes_to_ki(client, fake_ki, server):  # noqa: F811
     assert job["result"]["source_url"] == url
 
 
+def test_link_with_schema_on_request_goes_to_ki(client, fake_ki, server):  # noqa: F811
+    url = f"{server}/rezeptseiten/01_einfach.html"
+    job = wait(client, client.post(f"{API}/imports", json={"kind": "link", "url": url, "ki": True}).json())
+    assert job["kind"] == "link_ki" and job["status"] == "fertig", job
+    res = job["result"]
+    assert res["ki"] is True and res["source_url"] == url
+    # die KI bekommt nur die Schema-Daten als kurzen Text, das Bild der Seite bleibt erhalten
+    text = fake_ki.calls[0]["text"]
+    assert text.startswith("Titel: ") and "Zutaten:\n- " in text and "<" not in text
+    plain = wait(client, client.post(f"{API}/imports", json={"kind": "link", "url": url}).json())
+    assert res["image_url"] == plain["result"]["image_url"]
+    assert len(fake_ki.calls) == 1  # ohne Wunsch keine KI bei Seiten mit Schema-Daten
+
+    # scheitert die KI, ist der Import ein Fehler, die App behält dann die erste Vorschau
+    fake_ki.error = KiError("Das KI-Gateway ist gerade nicht erreichbar.")
+    job = wait(client, client.post(f"{API}/imports", json={"kind": "link", "url": url, "ki": True}).json())
+    assert job["status"] == "fehler" and "nicht erreichbar" in job["error"]
+
+
+def test_link_with_ki_needs_ki(client, server):  # noqa: F811
+    r = client.post(
+        f"{API}/imports", json={"kind": "link", "url": f"{server}/rezeptseiten/01_einfach.html", "ki": True}
+    )
+    assert r.status_code == 409
+
+
 def test_without_ki_text_and_photos_are_refused(client):
     r = client.post(f"{API}/imports", json={"kind": "text", "text": "Linsensuppe"})
     assert r.status_code == 409 and "nicht eingerichtet" in r.json()["detail"]

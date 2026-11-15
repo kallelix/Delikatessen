@@ -10,7 +10,7 @@ import type { ImportJob, RecipeInput } from "../types";
 
 type Mode =
   | { kind: "start" }
-  | { kind: "importing"; label: string }
+  | { kind: "importing"; label: string; back?: Mode }
   | { kind: "preview"; job: ImportJob }
   | { kind: "manual"; title?: string; source?: string | null; hint?: string; image?: File | null; jobId?: number };
 
@@ -66,19 +66,41 @@ export function Neu() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Startet einen Auftrag und wartet auf das Ende. null: abgebrochen oder Seite verlassen. */
+  async function waitForJob(id: number, start: () => Promise<ImportJob>, maxWait: number): Promise<ImportJob | null> {
+    let job = await start();
+    const until = Date.now() + maxWait;
+    while ((job.status === "wartet" || job.status === "laeuft") && Date.now() < until) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      if (cancelled.current || run.current !== id) return null;
+      job = await api.importJob(job.id);
+    }
+    return run.current === id ? job : null;
+  }
+
+  /** Link noch einmal von der KI lesen lassen. Klappt das nicht, bleibt die bisherige Vorschau. */
+  async function reReadWithKi(prev: ImportJob, link: string) {
+    const id = ++run.current;
+    const back: Mode = { kind: "preview", job: prev };
+    setMode({ kind: "importing", label: "Die KI liest das Rezept neu", back });
+    try {
+      const job = await waitForJob(id, () => api.startImport(link, true), MAX_WAIT_KI_MS);
+      if (!job) return;
+      if (job.status === "fertig") return void setMode({ kind: "preview", job });
+      toast.show(job.error ?? "Die KI braucht zu lange. Die bisherige Vorschau bleibt.", { error: true });
+    } catch (e) {
+      if (run.current !== id) return;
+      toast.show(errorText(e), { error: true });
+    }
+    setMode(back);
+  }
+
   async function runJob(label: string, start: () => Promise<ImportJob>, source: string | null, maxWait: number) {
     const id = ++run.current;
     setMode({ kind: "importing", label });
     try {
-      let job = await start();
-      const until = Date.now() + maxWait;
-      while ((job.status === "wartet" || job.status === "laeuft") && Date.now() < until) {
-        await new Promise((r) => setTimeout(r, POLL_MS));
-        // abgebrochen oder Seite verlassen: nicht mehr weiterschalten
-        if (cancelled.current || run.current !== id) return;
-        job = await api.importJob(job.id);
-      }
-      if (run.current !== id) return;
+      const job = await waitForJob(id, start, maxWait);
+      if (!job) return;
       if (job.status === "fertig") setMode({ kind: "preview", job });
       else if (job.status === "ohne_schema")
         setMode({
@@ -149,7 +171,7 @@ export function Neu() {
           className="btn"
           onClick={() => {
             run.current++;
-            setMode({ kind: "start" });
+            setMode(mode.back ?? { kind: "start" });
           }}
         >
           Abbrechen
@@ -160,6 +182,8 @@ export function Neu() {
 
   if (mode.kind === "preview") {
     const r = mode.job.result!;
+    const job = mode.job;
+    const link = r.source_url;
     return (
       <section className="page">
         <h1>Import prüfen</h1>
@@ -180,6 +204,20 @@ export function Neu() {
             r.ki
               ? "Von der KI gelesen. Bitte besonders Mengen und Einheiten prüfen. Ohne Bestätigung wird nichts gespeichert."
               : "Bitte prüfen. Ohne Bestätigung wird nichts gespeichert."
+          }
+          action={
+            !r.ki &&
+            link &&
+            kiReady && (
+              <div className="stack">
+                <button type="button" className="btn" onClick={() => void reReadWithKi(job, link)}>
+                  Mit KI neu lesen
+                </button>
+                <p className="muted small">
+                  Hilft, wenn Mengen im Namen stehen oder Schritte zerstückelt sind. Kostet ein paar Cent, Änderungen hier gehen dabei verloren.
+                </p>
+              </div>
+            )
           }
           submitLabel="Speichern"
           onCancel={() => setMode({ kind: "start" })}

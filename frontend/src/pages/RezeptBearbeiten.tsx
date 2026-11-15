@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../api";
 import { RecipeForm } from "../components/RecipeForm";
 import { useToast } from "../components/Toast";
@@ -7,6 +7,7 @@ import { errorText, useLoad } from "../lib";
 export function RezeptBearbeiten() {
   const id = Number(useParams().id);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const toast = useToast();
   const recipe = useLoad(() => api.recipe(id), [id]);
   if (recipe.error && !recipe.data) return <p className="error page">{recipe.error}</p>;
@@ -29,6 +30,7 @@ export function RezeptBearbeiten() {
           excluded: r.excluded,
         }}
         currentImage={r.image_url}
+        startAtOpen={params.get("zuordnen") === "1"}
         submitLabel="Speichern"
         onCancel={() => navigate(-1)}
         onSubmit={async (data, extras) => {

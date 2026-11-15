@@ -210,6 +210,8 @@ Gestrichelt: erst ab Stufe 2.
 
 Ohne KI-Dienst zeigt ein Link ohne Schema-Daten einen Hinweis und öffnet das leere Rezeptformular mit Titel und Quelle.
 
+**Ergänzung vom 15.11.2026:** Auch Seiten mit Schema-Daten haben manchmal ungewöhnliche Mengenangaben oder Zwischenüberschriften als Schritte. Deshalb bietet die Vorschau eines Link-Imports ohne KI die Schaltfläche „Mit KI neu lesen“, wenn der KI-Dienst aktiv ist. Die KI bekommt dann nur Titel, Zutatenzeilen und Schritte aus den Schema-Daten als kurzen Text, ohne Schema-Daten die ganze Seite. Das Bild der Seite bleibt erhalten. Scheitert die KI, bleibt die bisherige Vorschau stehen.
+
 **Antwortformat der KI:** Titel, Portionen, Dauer, Größe, Schritte, vorgeschlagene Tags und eine Liste von Zutaten mit Originalzeile, Menge, Einheit, Name und Zusatz. Fehlt eine Angabe im Original, bleibt das Feld leer, statt erfunden zu werden.
 
 **KI-Aufruf:** Die Anfrage nutzt strukturierte Ausgabe mit JSON-Schema (`output_config.format`). Die App prüft zusätzlich jede Antwort gegen dieses Schema und behandelt Abbrüche wie `refusal` oder `max_tokens` als Fehler in der Vorschau. Die LiteLLM-Dokumentation beschreibt für `/v1/messages` bisher nur das [ältere Feld `output_format`](https://docs.litellm.ai/docs/anthropic_unified/structured_output). Ob das neue Feld durchgereicht wird, ist deshalb gleich zu Beginn von Stufe 2 zu prüfen (AK-24).

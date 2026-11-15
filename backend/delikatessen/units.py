@@ -37,19 +37,24 @@ COUNT_UNITS = [
     "Kopf",
     "Würfel",
     "Tüte",
+    "Schuss",
+    "Spritzer",
+    "Stiel",
+    "Rolle",
+    "Kugel",
 ]
 ALL_UNITS = list(UNITS) + COUNT_UNITS
 
 _UNIT_VARIANTS = {
-    "g": ["g", "gr", "gr.", "gramm"],
-    "kg": ["kg", "kilo", "kilogramm"],
-    "ml": ["ml", "milliliter"],
+    "g": ["g", "g.", "gr", "gr.", "gramm"],
+    "kg": ["kg", "kg.", "kilo", "kilogramm"],
+    "ml": ["ml", "ml.", "milliliter"],
     "cl": ["cl"],
     "dl": ["dl"],
     "l": ["l", "liter", "ltr", "ltr."],
-    "EL": ["el", "el.", "esslöffel", "eßlöffel", "essl.", "elöffel"],
-    "TL": ["tl", "tl.", "teelöffel"],
-    "Stück": ["stück", "stk", "stk.", "st.", "st"],
+    "EL": ["el", "el.", "esslöffel", "eßlöffel", "essl.", "elöffel", "tbsp", "tbsp."],
+    "TL": ["tl", "tl.", "teelöffel", "tsp", "tsp."],
+    "Stück": ["stück", "stk", "stk.", "st.", "st", "pcs", "pcs.", "pc", "pc.", "piece", "pieces"],
     "Prise": ["prise", "prisen", "pr."],
     "Bund": ["bund", "bd.", "bunde"],
     "Dose": ["dose", "dosen"],
@@ -68,6 +73,11 @@ _UNIT_VARIANTS = {
     "Kopf": ["kopf", "köpfe"],
     "Würfel": ["würfel"],
     "Tüte": ["tüte", "tüten"],
+    "Schuss": ["schuss", "schüsse", "schluck"],
+    "Spritzer": ["spritzer"],
+    "Stiel": ["stiel", "stiele", "stängel", "stängel."],
+    "Rolle": ["rolle", "rollen"],
+    "Kugel": ["kugel", "kugeln"],
 }
 UNIT_LOOKUP = {v: canon for canon, vs in _UNIT_VARIANTS.items() for v in vs}
 
@@ -77,7 +87,76 @@ _QTY_RE = re.compile(
     rf"^\s*(?:ca\.?\s*|etwa\s+|circa\s+)?(?P<a>{_NUM})(?:\s*(?:-|–|bis)\s*(?P<b>{_NUM}))?\s*",
     re.IGNORECASE,
 )
-_OPTIONAL_PREFIX = re.compile(r"^(etwas|evtl\.?|eventuell|optional)\s+", re.IGNORECASE)
+_OPTIONAL_PREFIX = re.compile(
+    r"^(etwas|evtl\.?|eventuell|optional|ein\s+paar|ein\s+wenig|ein\s+bisschen|ein\s+bißchen|einige)\s+", re.IGNORECASE
+)
+
+# Zahlwörter am Zeilenanfang: "eine Zwiebel", "eine halbe Zitrone", "zwei Eier"
+_WORD_NUMBERS = {
+    "eineinhalb": 1.5,
+    "anderthalb": 1.5,
+    "ein": 1,
+    "eine": 1,
+    "einen": 1,
+    "einem": 1,
+    "einer": 1,
+    "zwei": 2,
+    "drei": 3,
+    "vier": 4,
+    "fünf": 5,
+    "sechs": 6,
+    "sieben": 7,
+    "acht": 8,
+    "neun": 9,
+    "zehn": 10,
+    "zwölf": 12,
+    "halbe": 0.5,
+    "halber": 0.5,
+    "halbes": 0.5,
+    "halben": 0.5,
+}
+_WORD_NUM_RE = re.compile(
+    r"^(?!ein\s+(?:paar|wenig|bisschen|bißchen)\b)(?P<w>"
+    + "|".join(sorted(_WORD_NUMBERS, key=len, reverse=True))
+    + r")(?:\s+(?P<h>halbe[rsn]?))?\s+(?=\S)",
+    re.IGNORECASE,
+)
+# Endungen in Klammern oder mit Schrägstrich: "Zwiebel(n)", "Zehe/n", "Ei(er)"
+_PLURAL_MARK_RE = re.compile(r"(?<=[^\W\d_])(?:\((?:n|en|e|er|s|nen)\)|/(?:n|en|e|er|s)\b)", re.IGNORECASE)
+# Verwendungszweck am Ende wird zum Zusatz: "Salz nach Belieben", "Butter für die Form", "Mehl zum Bestäuben"
+_PURPOSE_RE = re.compile(
+    r"\s+(?P<p>nach\s+(?:belieben|geschmack|bedarf)|n\.\s?b\.|zum\s+\w+|für\s+(?:die|den|das)\s+\w+|zum\s+servieren)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _unit_at(text: str) -> tuple[str | None, str]:
+    """Einheit am Anfang des Textes: zwei Wörter zuerst ("hand voll"), dann eins. Gibt (Einheit, Rest) zurück."""
+    words = text.split(" ", 2)
+    if len(words) >= 2 and f"{words[0]} {words[1]}".lower() in UNIT_LOOKUP:
+        return UNIT_LOOKUP[f"{words[0]} {words[1]}".lower()], (words[2] if len(words) > 2 else "")
+    if words and words[0].lower() in UNIT_LOOKUP:
+        return UNIT_LOOKUP[words[0].lower()], " ".join(words[1:])
+    return None, text
+
+
+# Menge mit Einheit als ganzer Text, etwa in Klammern "(200 g)" oder am Ende "Mehl 200 g"
+_QTY_UNIT_RE = re.compile(rf"^(?:ca\.?\s*|etwa\s+)?(?P<a>{_NUM})\s*(?P<u>[^\W\d_][\w.]*(?:\s[\w.]+)?)$", re.IGNORECASE)
+_TRAILING_QTY_RE = re.compile(
+    rf"[\s,:]+(?:ca\.?\s*|etwa\s+)?(?P<a>{_NUM})\s*(?P<u>[^\W\d_][\w.]*(?:\s[\w.]+)?)$", re.IGNORECASE
+)
+
+
+def _qty_with_unit(m: re.Match | None) -> tuple[float, str] | None:
+    if not m:
+        return None
+    unit = UNIT_LOOKUP.get(m.group("u").lower())
+    if unit is None:
+        return None
+    try:
+        return parse_number(m.group("a")), unit
+    except (ValueError, ZeroDivisionError):
+        return None
 
 
 def normalize_unit(unit: str | None) -> str | None:
@@ -134,14 +213,14 @@ class ParsedLine:
 def parse_ingredient_line(line: str) -> ParsedLine:
     """Zerlegt eine Zeile wie "200 g Mehl (Type 405), gesiebt" in Menge, Einheit, Name und Zusatz."""
     original = " ".join(line.split())
-    rest = original
+    rest = _PLURAL_MARK_RE.sub("", original)
     notes: list[str] = []
 
     # Klammern sind Zusätze
     for m in re.findall(r"\(([^)]*)\)", rest):
         if m.strip():
             notes.append(m.strip())
-    rest = re.sub(r"\([^)]*\)", " ", rest)
+    rest = " ".join(re.sub(r"\([^)]*\)", " ", rest).split())
 
     amount = None
     m = _QTY_RE.match(rest)
@@ -155,24 +234,41 @@ def parse_ingredient_line(line: str) -> ParsedLine:
             rest = rest[m.end() :]
         except (ValueError, ZeroDivisionError):
             amount = None
+    if amount is None:
+        m = _WORD_NUM_RE.match(rest)
+        if m:
+            amount = _WORD_NUMBERS[m.group("w").lower()] * (0.5 if m.group("h") else 1)
+            rest = rest[m.end() :]
 
     unit = None
     if amount is not None:
-        words = rest.split(" ", 2)
-        # zwei Wörter zuerst ("hand voll"), dann eins
-        if len(words) >= 2 and f"{words[0]} {words[1]}".lower() in UNIT_LOOKUP:
-            unit = UNIT_LOOKUP[f"{words[0]} {words[1]}".lower()]
-            rest = words[2] if len(words) > 2 else ""
-        elif words and words[0].lower() in UNIT_LOOKUP:
-            unit = UNIT_LOOKUP[words[0].lower()]
-            rest = " ".join(words[1:])
+        unit, rest = _unit_at(rest)
+    else:
+        # Menge hinten oder in Klammern: "Mehl 200 g", "Butter: 100g", "Sahne (200 ml)"
+        trailing = _TRAILING_QTY_RE.search(rest)
+        found = _qty_with_unit(trailing)
+        if found:
+            amount, unit = found
+            rest = rest[: trailing.start()]
+        else:
+            for i, n in enumerate(notes):
+                found = _qty_with_unit(_QTY_UNIT_RE.match(n))
+                if found:
+                    amount, unit = found
+                    del notes[i]
+                    break
 
     rest = rest.strip()
     m = _OPTIONAL_PREFIX.match(rest)
     if m:
         notes.insert(0, m.group(1))
         rest = rest[m.end() :]
-    body = rest.strip(" -–:;.")
+    m = _PURPOSE_RE.search(rest)
+    if m and m.start() > 0:
+        notes.append(m.group("p"))
+        # "Salz oder nach Geschmack": das verwaiste "oder" gehört nicht zum Namen
+        rest = re.sub(r"\s+(?:oder|und)$", "", rest[: m.start()], flags=re.IGNORECASE)
+    body = rest.strip(" -–;.")
     base_notes = tuple(notes)
 
     # Zusatz nach Komma

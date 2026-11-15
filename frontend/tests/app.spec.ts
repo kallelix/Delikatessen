@@ -160,6 +160,29 @@ test("Link-Import endet in der Vorschau", async () => {
   await expect(page.getByRole("heading", { name: "Spaghetti Bolognese" })).toBeVisible();
 });
 
+test("Offene Zutaten: Hinweis springt zur ersten, danach weiter zur nächsten", async () => {
+  await page.goto("/neu");
+  await page.getByPlaceholder("https://…").fill("http://127.0.0.1:8766/kreativ.html");
+  await page.getByRole("button", { name: "Rezept lesen" }).click();
+  await expect(page.getByRole("heading", { name: "Import prüfen" })).toBeVisible({ timeout: 15_000 });
+  // "Schritt 1" ist kein eigener Schritt
+  await expect(page.getByLabel("Zubereitung (ein Schritt pro Zeile)")).not.toHaveValue(/Schritt 1/);
+
+  await page.getByRole("button", { name: "2 offen · zur ersten" }).click();
+  const first = page.getByLabel("Katalogeintrag für Drachenfrucht");
+  await expect(first).toBeFocused();
+  await page.getByRole("button", { name: "„Drachenfrucht“ neu im Katalog anlegen" }).click();
+  // gleich weiter zur nächsten offenen Zutat
+  await expect(page.getByLabel("Katalogeintrag für Mondbohnen")).toBeFocused();
+  await page.getByRole("button", { name: "Schließen" }).click();
+  await expect(page.getByRole("button", { name: "1 offen · zur ersten" })).toBeVisible();
+
+  // auf Wunsch liest die KI den Link neu (Attrappe des Gateways)
+  await page.getByRole("button", { name: "Mit KI neu lesen" }).click();
+  await expect(page.getByText("Von der KI gelesen")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Mit KI neu lesen" })).toHaveCount(0);
+});
+
 test("AK-07: Teilen-Menü öffnet die Importvorschau", async () => {
   await page.goto("/");
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -297,9 +320,11 @@ test("Zutatensuche: Rezepte nach Vorrat, an den Plan übergeben", async () => {
 
 test("Journal und Rangliste zeigen, was gekocht wurde", async () => {
   await page.goto("/mehr/journal");
-  await expect(page.locator(".journal-entry").first()).toContainText("Kartoffelgratin");
+  await expect(page.locator(".journal-entry", { hasText: "Kartoffelgratin" }).first()).toBeVisible();
   await page.getByLabel("Journal durchsuchen").fill("gratin");
-  await expect(page.locator(".journal-entry")).toHaveCount(1);
+  // je nach Wochentag ist das Gratin schon ein- oder mehrmals gekocht, andere Gerichte fallen aber weg
+  await expect(page.locator(".journal-entry").first()).toContainText("Kartoffelgratin");
+  await expect(page.locator(".journal-entry").filter({ hasNotText: "Kartoffelgratin" })).toHaveCount(0);
   await page.getByRole("button", { name: "mies" }).click();
   await expect(page.getByText("Nichts gefunden.")).toBeVisible();
   await page.goto("/mehr/rangliste");

@@ -250,7 +250,7 @@ class ImportJob(Base):
     __tablename__ = "import_job"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    kind: Mapped[str] = mapped_column(String(10))  # link, spaeter text und foto
+    kind: Mapped[str] = mapped_column(String(10))  # link, link_ki, text, foto
     source: Mapped[str] = mapped_column(Text)
     # wartet, laeuft, fertig, ohne_schema, fehler, uebernommen
     status: Mapped[str] = mapped_column(String(12), default="wartet")
