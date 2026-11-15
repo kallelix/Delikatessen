@@ -16,7 +16,7 @@ Dieses Dokument ergänzt das [Pflichtenheft](pflichtenheft.md) um Stufe 3 „Ern
 
 **Abschaltbar:** Ein Schalter „Ernährung“ in den Einstellungen (Vorgabe aus) blendet Nährwerte, Wochenwert und die beiden neuen Planungsterme ein. Ist er aus, verhält sich die App genau wie in Stufe 2.
 
-**Nicht enthalten:** Vorratsverwaltung, Kalorienzählen je Person, Empfehlungen für Kinder, Mikronährstoffe wie Vitamine und Mineralstoffe.
+**Nicht enthalten:** Vorratsverwaltung, Kalorienzählen je Person, Empfehlungen für Kinder, Mikronährstoffe wie Vitamine und Mineralstoffe, Nährwerte per Barcode aus Open Food Facts (mögliche Erweiterung, Abschnitt 11).
 
 ## 2. Ergebnis der Vorprüfung
 
@@ -27,6 +27,7 @@ Das Lastenheft verlangt vor Stufe 3, die Lizenzbedingungen und das Downloadforma
 | [Bundeslebensmittelschlüssel 4.0](https://www.blsdb.de/download) | Open Data unter [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode), kostenlos und ohne Registrierung, Max Rubner-Institut als Herausgeber zu nennen. Eine XLSX-Datei mit 7.140 Lebensmitteln und 138 Nährstoffen, alle Werte je 100 g essbaren Anteil, Bezeichnungen auf Deutsch und Englisch. Fehlende Werte sind leer und nicht 0. Errata vom August 2026 kommen erst mit Version 4.1 | Ein Auszug darf ins Repo, mit eigenem Lizenzvermerk für die Daten (Abschnitt 9) |
 | DGE „Gut essen und trinken“ (2024) | [Orientierungswerte](https://www.dge.de/gesunde-ernaehrung/gut-essen-und-trinken/dge-ernaehrungskreis/) je Lebensmittelgruppe für Erwachsene, ausdrücklich als Wochenbilanz gedacht. Die Grafik des Ernährungskreises braucht eine Lizenz, die eine Weitergabe ausschließt. Für die Zahlen gibt es keine eigene Regel | Nur wenige Zahlen als änderbare Vorgaben mit Quellenangabe, keine Grafik, kein Logo, keine Aussage „nach DGE geprüft“ |
 | Optimierte Mischkost für Kinder (FKE, 2025) | Mengen je Altersgruppe, Lizenz CC BY-NC-ND 4.0 | Nicht verwendet. Werte je Person sind ohnehin nicht vorgesehen |
+| [Open Food Facts](https://world.openfoodfacts.org/data) (geprüft am 15.11.2026) | Von Freiwilligen gepflegte Datenbank verpackter Produkte, Abruf per Barcode, Werte von der Packung. Datenbank unter ODbL (Share-Alike), Inhalte unter DbCL, Bilder unter CC BY-SA. Deutschland: rund 439.000 Produkte, davon 58 % mit als vollständig markierten Nährwerten, nicht zentral geprüft. Kaum brauchbar für Grundzutaten wie Zwiebel oder Lachs | Nicht als Grundlage. Höchstens später für einzelne Fertigprodukte (Abschnitt 11) |
 | Saisonkalender von BLE/BZfE und Verbraucherzentrale | Nutzung nur mit Zustimmung bzw. CC BY-NC-ND. Eine frei lizenzierte Monatstabelle gibt es nicht | Eigene Tabelle für den Grundkatalog, nicht aus einer fremden Tabelle abgeschrieben (Abschnitt 4) |
 
 **Stolperstein BLS-Gruppen:** Der erste Buchstabe des BLS-Codes ist die Hauptgruppe, passt aber nicht zu den DGE-Gruppen. So steht „Kichererbse reif“ unter G (Gemüse) und nicht unter H (Hülsenfrüchte). Die Lebensmittelgruppe für den Wochenwert ist deshalb ein eigenes Feld der Zutat und wird nicht aus dem Code abgeleitet.
@@ -196,6 +197,15 @@ flowchart LR
     m10["<b>M10 Nährwerte</b><br/>BLS-Auszug, Zuordnung<br/>Anzeige je Portion"]
     gate --> m8 --> m9 --> gate2 --> m10
 ```
+
+**Mögliche Erweiterung nach M10: Werte per Barcode.** Bei Fertigprodukten wie Pesto, Brühwürfeln oder Fertigteig hängen die Werte stark von der Marke ab. Beim Pflegen einer solchen Zutat kann ein Erwachsener den Barcode scannen. Die App holt das Produkt dann einmalig aus Open Food Facts und speichert die acht Werte je 100 g an der Zutat, statt einer BLS-Zuordnung. Dazu kommen die Quelle und ein Link auf die Produktseite. Festlegungen, falls die Erweiterung kommt:
+
+| Thema | Festlegung |
+| --- | --- |
+| Abruf | `GET /api/v3/product/{barcode}` mit den Feldern `energy-kcal_100g`, `fat_100g`, `saturated-fat_100g`, `carbohydrates_100g`, `sugars_100g`, `fiber_100g`, `proteins_100g` und `salt_100g`. Ein fehlender Schlüssel heißt: Wert fehlt. Die neue Struktur `nutrition` ab API v3.5 ist noch in Entwicklung, deshalb gehört der Abruf hinter einen eigenen Adapter |
+| Nutzungsregeln | Lesen ohne Konto, aber mit eigenem User-Agent aus App-Name, Version und Projekt-URL, ohne persönliche Daten. Höchstens 15 Produktabrufe je Minute, ein Abruf je echtem Scan, keine Suche beim Tippen. Tests nur gegen die Staging-Umgebung `world.openfoodfacts.net` |
+| Lizenz | Die Werte liegen nur in der privaten Datenbank der Familie, ins Repo kommen keine OFF-Daten, auch nicht als Testdaten. Trotzdem nennt die App die Quelle an der Zutat und unter „Über“ („Enthält Daten von Open Food Facts, Open Database License“), wie Open Food Facts es für Apps verlangt |
+| Netz | Eine neue ausgehende Verbindung der App, abschaltbar wie Bring! |
 
 | Risiko | Folge | Gegenmaßnahme |
 | --- | --- | --- |
