@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import __version__, appsettings, ki, push
+from .. import __version__, appsettings, ki, push, update
 from ..config import Settings
 from ..models import Ingredient, IngredientGroup, Person, PersonNoGo
 from .deps import current_person, get_db, get_settings, require_adult
@@ -134,4 +134,15 @@ def status(db: Session = Depends(get_db), settings: Settings = Depends(get_setti
             "ki": ki.status(settings),
             "push": push.status(db),
         },
+        "update": update.status(settings),
     }
+
+
+@router.post("/update", status_code=202, dependencies=[Depends(require_adult)])
+def post_update(settings: Settings = Depends(get_settings)):
+    """Update auf das neueste Release anstoßen. Den Rest erledigt der Host (delikatessen-update.path)."""
+    try:
+        update.request_update(settings)
+    except update.UpdateRefused as e:
+        raise HTTPException(409, str(e)) from e
+    return update.status(settings)

@@ -19,6 +19,7 @@ import type {
   RecipeSummary,
   ShoppingItem,
   Status,
+  UpdateStatus,
   Tag,
 } from "./types";
 
@@ -184,4 +185,5 @@ export const api = {
   bringLists: () => request<BringList[]>("GET", "/bring/lists"),
   sendToBring: (start: string) => request<BringTransfer>("POST", `/plans/${start}/shopping/bring`),
   status: () => request<Status>("GET", "/status"),
+  startUpdate: () => request<UpdateStatus>("POST", "/update"),
 };

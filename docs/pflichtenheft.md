@@ -310,7 +310,7 @@ Stufe 1 braucht genau einen neuen Container, Stufe 2 einen zweiten für das Gate
 | Installation | `deploy/install.sh` ist wiederholbar, legt Nutzer, Python-Umgebung und systemd-Dienst an |
 | Konfiguration | Datei `/etc/delikatessen/env` außerhalb des Repos, im Repo nur `.env.example` (N-16) |
 | Backup | Täglich `sqlite3 .backup` plus Bilder, 14 Tage Aufbewahrung, zusätzlich Proxmox-Backup des Containers. Wiederherstellung einmal dokumentiert testen (N-03) |
-| Updates | `deploy/update.sh` sichert zuerst, holt das Release-Tag, migriert mit Alembic und startet neu (N-14) |
+| Updates | `deploy/update.sh` sichert zuerst, holt das Release-Tag, migriert mit Alembic und startet neu (N-14). Ergänzung vom 15.11.2026: Ein Timer auf dem Host meldet neue Releases in der App, Erwachsene können das Update dort anstoßen. Die App legt dafür nur eine Anforderungsdatei an, das Update läuft als eigener systemd-Dienst mit Rückweg bei Fehlern (betrieb.md Abschnitt 4) |
 | Abhängigkeiten | Lockdatei mit Hashes. LiteLLM-Image auf eine geprüfte Version festgelegt und nicht automatisch aktualisiert |
 | Protokolle | journald, keine Rezepttexte oder Bilder im Log, Gateway ohne Speicherung von Prompts |
 

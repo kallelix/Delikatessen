@@ -60,7 +60,26 @@ sudo bash /opt/delikatessen/current/deploy/update.sh          # neuestes Release
 sudo bash /opt/delikatessen/current/deploy/update.sh v0.2.0   # bestimmtes Release
 ```
 
-Das Update sichert zuerst, installiert das Release daneben, migriert die Datenbank und schaltet dann um (N-14). Die letzten drei Releases bleiben liegen. Ein Rückweg auf ein älteres Release braucht auch die Sicherung von vor dem Update, weil die Datenbank schon migriert ist (Abschnitt 5).
+Das Update sichert zuerst, installiert das Release daneben, migriert die Datenbank und schaltet dann um (N-14). Die letzten drei Releases bleiben liegen. Ein Rückweg auf ein älteres Release braucht auch die Sicherung von vor dem Update, weil die Datenbank schon migriert ist (Abschnitt 5). `update.sh` holt `install.sh` vom Tag des Ziel-Releases, nie vom Entwicklungsstand auf `main`.
+
+**Hinweis in der App:** Der Timer `delikatessen-update-check.timer` fragt täglich gegen 4 Uhr und 10 Minuten nach jedem Start GitHub nach dem neuesten Release. Er schreibt das Ergebnis nach `/var/lib/delikatessen-update/neueste.json`. Gibt es eine neuere Version, steht unter „Mehr“ › „Status der Dienste“ „Version … ist verfügbar“ mit Link zu den Release-Notizen. Die App selbst fragt GitHub nie.
+
+**Update auf Knopfdruck:** Erwachsene sehen dort zusätzlich „Jetzt aktualisieren“. Ablauf:
+
+1. Die App legt nur die leere Datei `/var/lib/delikatessen/update-anfrage` an. Sie hat dafür keine weiteren Rechte und kann weder Version noch Parameter wählen.
+2. `delikatessen-update.path` bemerkt die Datei und startet `delikatessen-update.service` als root. Der Dienst führt `deploy/selbst-update.sh` aus, entfernt als Erstes die Anforderung und installiert mit `update.sh` das neueste Release.
+3. Schlägt das fehl, stellt das Skript das vorige Release und die Sicherung von eben zurück und startet die App neu.
+4. Den Verlauf schreibt es nach `/var/lib/delikatessen-update/update.json`. Die App zeigt ihn an und lädt sich nach dem Update von selbst neu.
+
+| Thema | Festlegung |
+| --- | --- |
+| Rechte | `/var/lib/delikatessen-update` gehört root, die App darf nur lesen. So kann der App-Nutzer dort nichts umbiegen, in das root später schreibt |
+| Protokoll | `journalctl -u delikatessen-update` und `journalctl -u delikatessen-update-check` |
+| Hängt ein Update | Nach 30 Minuten gibt die App den Knopf wieder frei. Vorher per SSH: `systemctl status delikatessen-update` |
+| Nur Hinweis, kein Knopf | `sudo systemctl disable --now delikatessen-update.path` und `DELIKATESSEN_UPDATE_BUTTON=false` in `/etc/delikatessen/env`, dann `sudo systemctl restart delikatessen`. `install.sh` lässt den Knopf dann aus |
+| Abwägung | Der Knopf startet Code mit root-Rechten. Die Trennung von Erwachsenen und Kindern bleibt aber ein Bedienschutz (N-09). Wer im VPN ein Erwachsenenprofil wählt, kann also ein Update anstoßen, allerdings nur auf das neueste offizielle Release mit geprüfter Prüfsumme |
+
+**Erstes Mal:** Hinweis und Knopf kommen mit dem nächsten Update, das noch per SSH läuft. `install.sh` legt dabei Verzeichnis, Timer und Path-Unit an und ergänzt `DELIKATESSEN_UPDATE_DIR` in `/etc/delikatessen/env`.
 
 Ein Release entsteht, wenn ein Tag `vX.Y.Z` gepusht wird, der zur Version in `backend/pyproject.toml` passt. Die CI baut dann das Archiv mit Prüfsumme.
 

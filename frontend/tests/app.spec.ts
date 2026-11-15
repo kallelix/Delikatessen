@@ -365,3 +365,16 @@ test("Gelöschtes Rezept verschwindet sofort aus der Liste", async () => {
   await expect(page.locator(".recipe-card").first()).toBeVisible();
   await expect(card).toHaveCount(0);
 });
+
+// zuletzt: danach steht die App auf "Update läuft"
+test("Update-Hinweis und Knopf für Erwachsene", async () => {
+  await page.goto("/mehr");
+  await expect(page.getByText("Version v9.9.9 ist verfügbar")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Was ist neu" })).toHaveAttribute("href", "https://example.org/release");
+  page.once("dialog", (d) => void d.accept());
+  await page.getByRole("button", { name: "Jetzt aktualisieren" }).click();
+  // den Rest erledigt der Server, hier legt die App nur die Anforderung an
+  await expect(page.getByText("Update auf v9.9.9 läuft")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Jetzt aktualisieren" })).toHaveCount(0);
+  await shots("14-update");
+});

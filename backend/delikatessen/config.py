@@ -44,12 +44,17 @@ class Settings(BaseSettings):
     push_contact: str = "mailto:delikatessen@example.org"
     # Donnerstagslauf (F-24). In Tests aus, damit kein Hintergrund-Thread läuft.
     scheduler_enabled: bool = True
+    # Update-Hinweis: hier schreiben Timer und Update-Dienst des Hosts ihren Stand (install.sh setzt das).
+    # Leer = kein Hinweis und kein Knopf.
+    update_dir: Path | None = None
+    # Knopf "Jetzt aktualisieren" für Erwachsene. false = nur der Hinweis.
+    update_button: bool = True
 
     @property
     def ki_configured(self) -> bool:
         return bool(self.ki_base_url and self.ki_api_key)
 
-    @field_validator("frontend_dir", "secret_key", "ki_base_url", "ki_api_key", mode="before")
+    @field_validator("frontend_dir", "secret_key", "ki_base_url", "ki_api_key", "update_dir", mode="before")
     @classmethod
     def _empty_is_none(cls, v):
         return v or None

@@ -233,10 +233,23 @@ export interface ServiceStatus {
   hinweis: string;
 }
 
+export interface UpdateStatus {
+  version: string;
+  neueste: string | null;
+  url: string | null;
+  geprueft: string | null;
+  verfuegbar: boolean;
+  knopf: boolean;
+  laeuft: boolean;
+  letztes: { status: "laeuft" | "fertig" | "fehler" | "aktuell"; meldung: string; von: string; nach: string | null; zeit: string } | null;
+}
+
 export interface Status {
   version: string;
   datenbank: string;
   dienste: Record<string, ServiceStatus>;
+  /** null, wenn der Server keine Update-Prüfung eingerichtet hat */
+  update: UpdateStatus | null;
 }
 
 export interface ImportJob {

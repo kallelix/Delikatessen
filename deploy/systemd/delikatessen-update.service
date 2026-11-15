@@ -1,0 +1,9 @@
+[Unit]
+Description=Delikatessen: Update auf das neueste Release (root, nur über delikatessen-update.path)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/delikatessen/current/deploy/selbst-update.sh
+TimeoutStartSec=20min

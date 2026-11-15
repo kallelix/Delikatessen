@@ -13,15 +13,25 @@ systemctl is-failed --quiet delikatessen-backup.service && { echo "Sicherung feh
 
 DIR=$(cd "$(dirname "$0")" && pwd)
 INSTALL="$DIR/install.sh"
-# Das Skript kann aus einem älteren Release stammen: immer die neueste install.sh verwenden
-if [[ -n "${DELIKATESSEN_LOCAL:-}" ]]; then
-  exec "$INSTALL" "$@"
+# Das Skript kann aus einem älteren Release stammen: install.sh des Ziel-Releases verwenden
+if [[ -n "${DELIKATESSEN_LOCAL:-}" || "${1:-}" == --* ]]; then
+  exec bash "$INSTALL" "$@"
 fi
+REPO="${DELIKATESSEN_REPO:-kallelix/Delikatessen}"
+VERSION="${1:-}"
+if [[ -z "$VERSION" ]]; then
+  VERSION=$(curl -fsSL --max-time 30 "https://api.github.com/repos/$REPO/releases/latest" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+fi
+[[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Ungültige Version: $VERSION" >&2; exit 1; }
+
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
-REPO="${DELIKATESSEN_REPO:-kallelix/Delikatessen}"
-REF="${1:-main}"
-curl -fsSL "https://raw.githubusercontent.com/$REPO/$REF/deploy/install.sh" -o "$TMP" || cp "$INSTALL" "$TMP"
-bash "$TMP" "$@"
+# install.sh vom Tag des Releases, nicht vom Entwicklungsstand auf main
+if ! curl -fsSL --max-time 30 "https://raw.githubusercontent.com/$REPO/$VERSION/deploy/install.sh" -o "$TMP"; then
+  echo "install.sh von $VERSION nicht erreichbar, nehme die installierte" >&2
+  cp "$INSTALL" "$TMP"
+fi
+bash "$TMP" "$VERSION"
 echo "Rückweg bei Problemen: sudo ln -sfn /opt/delikatessen/releases/<alte Version> /opt/delikatessen/current"
 echo "                        und die Sicherung aus /var/backups/delikatessen zurückspielen (docs/betrieb.md)"

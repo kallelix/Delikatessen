@@ -1,0 +1,10 @@
+[Unit]
+Description=Delikatessen: Update auf Knopfdruck aus der App
+
+[Path]
+# Die App legt die Datei an, selbst-update.sh entfernt sie als Erstes
+PathExists=/var/lib/delikatessen/update-anfrage
+Unit=delikatessen-update.service
+
+[Install]
+WantedBy=paths.target

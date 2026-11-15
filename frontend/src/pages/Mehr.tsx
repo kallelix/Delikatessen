@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { api } from "../api";
 import { useApp } from "../AppContext";
 import { Benachrichtigungen } from "../components/Benachrichtigungen";
+import { UpdateHinweis } from "../components/UpdateHinweis";
 import { useLoad } from "../lib";
 
 export function Mehr() {
@@ -69,6 +70,7 @@ export function Mehr() {
               {name === "bring" ? "Bring!" : name === "ki" ? "KI" : "Benachrichtigungen"}: {s.aktiv ? `aktiv${s.hinweis ? `, ${s.hinweis}` : ""}` : s.hinweis}
             </li>
           ))}
+          {status.data.update && <UpdateHinweis initial={status.data.update} isAdult={isAdult} />}
         </ul>
       ) : (
         <p className="muted">{status.error ?? "…"}</p>

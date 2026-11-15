@@ -1,8 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 // Frische Datenbank je Lauf; der Server liefert das gebaute Frontend aus (npm run build vorher)
 const dataDir = path.resolve("test-results", `daten-${Date.now()}`);
+// Stand der Update-Prüfung, wie ihn der Timer auf dem Host schreibt: es gibt eine neuere Version
+// (nicht unter test-results, den Ordner leert Playwright beim Start)
+const updateDir = path.join(os.tmpdir(), `delikatessen-update-${Date.now()}`);
+fs.mkdirSync(updateDir, { recursive: true });
+fs.writeFileSync(
+  path.join(updateDir, "neueste.json"),
+  JSON.stringify({ neueste: "v9.9.9", url: "https://example.org/release", geprueft: "2026-11-15T04:00:00+01:00" }),
+);
 const python =
   process.env.PYTHON ?? path.resolve("..", "backend", ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
 
@@ -32,6 +42,7 @@ export default defineConfig({
         // KI über eine Attrappe des Gateways, es wird keine echte KI aufgerufen
         DELIKATESSEN_KI_BASE_URL: "http://127.0.0.1:8767",
         DELIKATESSEN_KI_API_KEY: "sk-test",
+        DELIKATESSEN_UPDATE_DIR: updateDir,
       },
     },
     {

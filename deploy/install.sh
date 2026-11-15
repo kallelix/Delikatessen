@@ -12,6 +12,7 @@ BASE=/opt/delikatessen
 DATA=/var/lib/delikatessen
 BACKUPS=/var/backups/delikatessen
 CONF=/etc/delikatessen
+UPDATE_STATE=/var/lib/delikatessen-update
 USER_NAME=delikatessen
 
 die() { echo "Fehler: $*" >&2; exit 1; }
@@ -40,6 +41,8 @@ id "$USER_NAME" >/dev/null 2>&1 || useradd --system --home-dir "$DATA" --shell /
 install -d -o "$USER_NAME" -g "$USER_NAME" -m 750 "$DATA" "$BACKUPS"
 install -d -m 755 "$BASE/releases"
 install -d -o root -g "$USER_NAME" -m 750 "$CONF"
+# Stand von Update-Prüfung und Update auf Knopfdruck: schreibt nur root, die App liest
+install -d -o root -g "$USER_NAME" -m 750 "$UPDATE_STATE"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -86,6 +89,10 @@ if ! grep -qE '^DELIKATESSEN_SECRET_KEY=.+' "$CONF/env"; then
   sed -i '/^DELIKATESSEN_SECRET_KEY=/d' "$CONF/env"
   echo "DELIKATESSEN_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> "$CONF/env"
 fi
+if ! grep -q '^DELIKATESSEN_UPDATE_DIR=' "$CONF/env"; then
+  info "Update-Hinweis in der App einschalten"
+  echo "DELIKATESSEN_UPDATE_DIR=$UPDATE_STATE" >> "$CONF/env"
+fi
 
 info "Datenbank migrieren"
 set -a; source "$CONF/env"; set +a
@@ -98,8 +105,17 @@ mv -T "$BASE/current.new" "$BASE/current"
 install -m 644 "$TARGET/deploy/systemd/delikatessen.service" /etc/systemd/system/
 install -m 644 "$TARGET/deploy/systemd/delikatessen-backup.service" /etc/systemd/system/
 install -m 644 "$TARGET/deploy/systemd/delikatessen-backup.timer" /etc/systemd/system/
+for unit in delikatessen-update-check.service delikatessen-update-check.timer delikatessen-update.service delikatessen-update.path; do
+  install -m 644 "$TARGET/deploy/systemd/$unit" /etc/systemd/system/
+done
 systemctl daemon-reload
 systemctl enable --now delikatessen-backup.timer >/dev/null
+systemctl enable --now delikatessen-update-check.timer >/dev/null
+# Update auf Knopfdruck. Abschalten: systemctl disable --now delikatessen-update.path
+# und DELIKATESSEN_UPDATE_BUTTON=false in /etc/delikatessen/env (docs/betrieb.md)
+if ! grep -q '^DELIKATESSEN_UPDATE_BUTTON=false' "$CONF/env"; then
+  systemctl enable --now delikatessen-update.path >/dev/null
+fi
 systemctl enable delikatessen.service >/dev/null
 systemctl restart delikatessen.service
 
@@ -110,6 +126,8 @@ done
 
 for _ in $(seq 1 20); do
   if curl -fsS http://127.0.0.1:8000/api/v1/status >/dev/null 2>&1; then
+    # Stand für den Update-Hinweis gleich auffrischen, ohne GitHub ist das kein Fehler
+    systemctl start --no-block delikatessen-update-check.service || true
     info "Delikatessen $VERSION läuft auf Port 8000"
     exit 0
   fi
