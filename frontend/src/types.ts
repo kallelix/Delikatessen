@@ -263,6 +263,8 @@ export interface UpdateStatus {
   verfuegbar: boolean;
   knopf: boolean;
   laeuft: boolean;
+  /** „Jetzt prüfen“ angefordert, der Host fragt gerade GitHub */
+  prueft: boolean;
   letztes: { status: "laeuft" | "fertig" | "fehler" | "aktuell"; meldung: string; von: string; nach: string | null; zeit: string } | null;
 }
 

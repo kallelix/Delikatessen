@@ -191,4 +191,5 @@ export const api = {
   sendToBring: (start: string) => request<BringTransfer>("POST", `/plans/${start}/shopping/bring`),
   status: () => request<Status>("GET", "/status"),
   startUpdate: () => request<UpdateStatus>("POST", "/update"),
+  checkUpdate: () => request<UpdateStatus>("POST", "/update/pruefen"),
 };

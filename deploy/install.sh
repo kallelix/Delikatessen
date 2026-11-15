@@ -105,12 +105,14 @@ mv -T "$BASE/current.new" "$BASE/current"
 install -m 644 "$TARGET/deploy/systemd/delikatessen.service" /etc/systemd/system/
 install -m 644 "$TARGET/deploy/systemd/delikatessen-backup.service" /etc/systemd/system/
 install -m 644 "$TARGET/deploy/systemd/delikatessen-backup.timer" /etc/systemd/system/
-for unit in delikatessen-update-check.service delikatessen-update-check.timer delikatessen-update.service delikatessen-update.path; do
+for unit in delikatessen-update-check.service delikatessen-update-check.timer delikatessen-update-check.path \n  delikatessen-update.service delikatessen-update.path; do
   install -m 644 "$TARGET/deploy/systemd/$unit" /etc/systemd/system/
 done
 systemctl daemon-reload
 systemctl enable --now delikatessen-backup.timer >/dev/null
 systemctl enable --now delikatessen-update-check.timer >/dev/null
+# „Jetzt prüfen“ in der App
+systemctl enable --now delikatessen-update-check.path >/dev/null
 # Update auf Knopfdruck. Abschalten: systemctl disable --now delikatessen-update.path
 # und DELIKATESSEN_UPDATE_BUTTON=false in /etc/delikatessen/env (docs/betrieb.md)
 if ! grep -q '^DELIKATESSEN_UPDATE_BUTTON=false' "$CONF/env"; then

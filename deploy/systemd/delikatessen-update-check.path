@@ -1,0 +1,10 @@
+[Unit]
+Description=Delikatessen: auf Knopfdruck aus der App nach neuem Release schauen
+
+[Path]
+# Die App legt die Datei an („Jetzt prüfen“), delikatessen-update-check.service entfernt sie als Erstes
+PathExists=/var/lib/delikatessen/update-pruefen
+Unit=delikatessen-update-check.service
+
+[Install]
+WantedBy=paths.target

@@ -146,3 +146,13 @@ def post_update(settings: Settings = Depends(get_settings)):
     except update.UpdateRefused as e:
         raise HTTPException(409, str(e)) from e
     return update.status(settings)
+
+
+@router.post("/update/pruefen", status_code=202, dependencies=[Depends(require_adult)])
+def post_update_check(settings: Settings = Depends(get_settings)):
+    """Jetzt nach einem neuen Release schauen, statt auf den nächtlichen Timer zu warten."""
+    try:
+        update.request_check(settings)
+    except update.UpdateRefused as e:
+        raise HTTPException(409, str(e)) from e
+    return update.status(settings)

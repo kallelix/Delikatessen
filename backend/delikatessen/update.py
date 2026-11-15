@@ -3,6 +3,8 @@
 Die App selbst spricht dafür kein Netz an und braucht keine root-Rechte:
 
 - Ein systemd-Timer auf dem Host schreibt täglich das neueste Release nach `<update_dir>/neueste.json`.
+  „Jetzt prüfen“ legt `<data_dir>/update-pruefen` an, dann startet delikatessen-update-check.path dieselbe
+  Prüfung sofort.
 - Der Knopf legt nur die Datei `<data_dir>/update-anfrage` an. Eine systemd-Path-Unit startet dann als root
   `deploy/selbst-update.sh`, das immer das neueste Release installiert. Die App kann weder Version noch
   Parameter wählen. Den Verlauf schreibt das Skript nach `<update_dir>/update.json`.
@@ -19,6 +21,9 @@ from . import __version__
 from .config import Settings
 
 REQUEST_FILE = "update-anfrage"
+CHECK_FILE = "update-pruefen"
+# Bleibt die Anforderung zum Prüfen länger liegen, fehlt die Path-Unit oder sie hängt: wieder freigeben
+CHECK_STALE_AFTER = timedelta(minutes=2)
 # Läuft ein Update länger, gilt es als hängengeblieben und der Knopf ist wieder frei
 STALE_AFTER = timedelta(minutes=30)
 
@@ -38,6 +43,18 @@ def _read(path: Path) -> dict | None:
 
 def request_path(settings: Settings) -> Path:
     return settings.data_dir / REQUEST_FILE
+
+
+def check_path(settings: Settings) -> Path:
+    return settings.data_dir / CHECK_FILE
+
+
+def _checking(settings: Settings, now: datetime) -> bool:
+    try:
+        since = datetime.fromtimestamp(check_path(settings).stat().st_mtime).astimezone()
+    except OSError:
+        return False
+    return now - since < CHECK_STALE_AFTER
 
 
 def _running(last: dict | None, now: datetime) -> bool:
@@ -68,6 +85,7 @@ def status(settings: Settings, now: datetime | None = None) -> dict | None:
         "verfuegbar": available,
         "knopf": settings.update_button,
         "laeuft": requested or _running(last, now),
+        "prueft": _checking(settings, now),
         "letztes": last,
     }
 
@@ -86,3 +104,10 @@ def request_update(settings: Settings) -> None:
     if not s["verfuegbar"]:
         raise UpdateRefused("Es gibt keine neuere Version")
     request_path(settings).touch()
+
+
+def request_check(settings: Settings) -> None:
+    """Legt die Anforderung für delikatessen-update-check.path an. Zweimal drücken schadet nicht."""
+    if status(settings) is None:
+        raise UpdateRefused("Die Update-Prüfung ist auf diesem Server nicht eingerichtet")
+    check_path(settings).touch()

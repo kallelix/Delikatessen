@@ -4,6 +4,7 @@ import { errorText } from "../lib";
 import type { UpdateStatus } from "../types";
 
 const POLL_MS = 3000;
+const CHECK_POLL_MS = 1500;
 
 /** Nach dem Update: neuen Service Worker holen und die App frisch laden */
 async function reloadApp() {
@@ -19,7 +20,9 @@ async function reloadApp() {
 function dateText(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("de-DE", { day: "numeric", month: "numeric" });
+  if (Number.isNaN(d.getTime())) return "";
+  const day = d.toLocaleDateString("de-DE", { day: "numeric", month: "numeric" });
+  return `${day} um ${d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 /**
@@ -32,7 +35,41 @@ export function UpdateHinweis({ initial, isAdult }: { initial: UpdateStatus; isA
   const [busy, setBusy] = useState(false);
   const startVersion = initial.version;
 
+  const [checkedBefore, setCheckedBefore] = useState<string | null | undefined>(undefined);
+
   useEffect(() => setU(initial), [initial]);
+
+  // „Jetzt prüfen“: der Host fragt GitHub, das dauert meist nur Sekunden
+  useEffect(() => {
+    if (!u.prueft) return;
+    const t = window.setInterval(async () => {
+      try {
+        const s = await api.status();
+        if (s.update && !s.update.prueft) {
+          setU(s.update);
+          if (s.update.geprueft === checkedBefore) setError("Prüfen hat nicht geklappt. Später noch einmal versuchen.");
+          setCheckedBefore(undefined);
+        }
+      } catch {
+        // kurz keine Verbindung, weiter fragen
+      }
+    }, CHECK_POLL_MS);
+    return () => window.clearInterval(t);
+  }, [u.prueft, checkedBefore]);
+
+  async function check() {
+    setBusy(true);
+    setError(null);
+    setCheckedBefore(u.geprueft);
+    try {
+      setU(await api.checkUpdate());
+    } catch (e) {
+      setError(errorText(e));
+      setCheckedBefore(undefined);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Während des Updates ist der Server kurz weg: weiter fragen, bis die neue Version antwortet
   useEffect(() => {
@@ -90,8 +127,24 @@ export function UpdateHinweis({ initial, isAdult }: { initial: UpdateStatus; isA
             </div>
           )}
         </li>
+      ) : u.prueft ? (
+        <li role="status" className="muted">
+          Suche nach einer neuen Version …
+        </li>
       ) : (
-        u.neueste && <li className="muted">Auf dem neuesten Stand{u.geprueft ? `, geprüft am ${dateText(u.geprueft)}` : ""}</li>
+        (u.neueste || isAdult) && (
+          <li className="muted">
+            {u.neueste ? `Auf dem neuesten Stand${u.geprueft ? `, geprüft am ${dateText(u.geprueft)}` : ""}` : "Noch nicht nach Updates geschaut"}
+            {isAdult && (
+              <>
+                {" "}
+                <button type="button" className="link-btn" disabled={busy} onClick={check}>
+                  Jetzt prüfen
+                </button>
+              </>
+            )}
+          </li>
+        )
       )}
       {failed && (
         <li className="error" role="alert">

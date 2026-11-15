@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prüft, ob es ein neueres Release gibt, und schreibt das Ergebnis für den Hinweis in der App.
-# Läuft täglich über delikatessen-update-check.timer. Die App selbst fragt GitHub nie.
+# Läuft täglich über delikatessen-update-check.timer und auf Knopfdruck über delikatessen-update-check.path.
+# Die App selbst fragt GitHub nie.
 set -euo pipefail
 
 REPO="${DELIKATESSEN_REPO:-kallelix/Delikatessen}"

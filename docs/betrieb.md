@@ -64,6 +64,8 @@ Das Update sichert zuerst, installiert das Release daneben, migriert die Datenba
 
 **Hinweis in der App:** Der Timer `delikatessen-update-check.timer` fragt täglich gegen 4 Uhr und 10 Minuten nach jedem Start GitHub nach dem neuesten Release. Er schreibt das Ergebnis nach `/var/lib/delikatessen-update/neueste.json`. Gibt es eine neuere Version, steht unter „Mehr“ › „Status der Dienste“ „Version … ist verfügbar“ mit Link zu den Release-Notizen. Die App selbst fragt GitHub nie.
 
+**Jetzt prüfen:** Erwachsene können die Prüfung über „Jetzt prüfen“ sofort anstoßen, statt auf den Timer zu warten. Die App legt dafür `/var/lib/delikatessen/update-pruefen` an. `delikatessen-update-check.path` startet dann denselben Dienst wie der Timer, und der entfernt die Datei als Erstes. Nach ein paar Sekunden zeigt die App das Ergebnis. Liegt die Datei nach zwei Minuten noch da, fehlt meist die Path-Unit (`systemctl status delikatessen-update-check.path`), und die App meldet, dass das Prüfen nicht geklappt hat.
+
 **Update auf Knopfdruck:** Erwachsene sehen dort zusätzlich „Jetzt aktualisieren“. Ablauf:
 
 1. Die App legt nur die leere Datei `/var/lib/delikatessen/update-anfrage` an. Sie hat dafür keine weiteren Rechte und kann weder Version noch Parameter wählen.
@@ -79,7 +81,7 @@ Das Update sichert zuerst, installiert das Release daneben, migriert die Datenba
 | Nur Hinweis, kein Knopf | `sudo systemctl disable --now delikatessen-update.path` und `DELIKATESSEN_UPDATE_BUTTON=false` in `/etc/delikatessen/env`, dann `sudo systemctl restart delikatessen`. `install.sh` lässt den Knopf dann aus |
 | Abwägung | Der Knopf startet Code mit root-Rechten. Die Trennung von Erwachsenen und Kindern bleibt aber ein Bedienschutz (N-09). Wer im VPN ein Erwachsenenprofil wählt, kann also ein Update anstoßen, allerdings nur auf das neueste offizielle Release mit geprüfter Prüfsumme |
 
-**Erstes Mal:** Hinweis und Knopf kommen mit dem nächsten Update, das noch per SSH läuft. `install.sh` legt dabei Verzeichnis, Timer und Path-Unit an und ergänzt `DELIKATESSEN_UPDATE_DIR` in `/etc/delikatessen/env`.
+**Erstes Mal:** Hinweis und Knopf kommen mit dem nächsten Update, das noch per SSH läuft. `install.sh` legt dabei Verzeichnis, Timer und Path-Unit an und ergänzt `DELIKATESSEN_UPDATE_DIR` in `/etc/delikatessen/env`. „Jetzt prüfen“ kommt mit 0.3.1 dazu. Die Path-Unit dafür richtet das erste Update auf 0.3.1 ein, egal ob per Knopf oder per SSH.
 
 Ein Release entsteht, wenn ein Tag `vX.Y.Z` gepusht wird, der zur Version in `backend/pyproject.toml` passt. Die CI baut dann das Archiv mit Prüfsumme.
 

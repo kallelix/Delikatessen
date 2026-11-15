@@ -5,6 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+# Anforderung aus der App entfernen, sonst startet die Path-Unit gleich wieder. „+“ läuft ohne die
+# Sperren unten, weil das Datenverzeichnis sonst schreibgeschützt ist. rm folgt keinem Symlink.
+ExecStartPre=+/bin/rm -f /var/lib/delikatessen/update-pruefen
 ExecStart=/bin/bash /opt/delikatessen/current/deploy/update-pruefen.sh
 NoNewPrivileges=true
 PrivateTmp=true

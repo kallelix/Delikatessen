@@ -79,3 +79,30 @@ def test_button_only_for_adults_and_switchable(client, app, update_dir):
     assert client.get(f"{API}/status").json()["update"]["knopf"] is False
     assert client.post(f"{API}/update").status_code == 409
     assert not (app.state.settings.data_dir / "update-anfrage").exists()
+
+
+def test_check_now_writes_request(client, app, update_dir):
+    import os
+    import time
+
+    make_person(client, "Anna")
+    kid = make_person(client, "Ida", kind="kind")
+    headers = {"X-Delikatessen-Person": str(kid["id"])}
+    assert client.post(f"{API}/update/pruefen", headers=headers).status_code == 403
+    r = client.post(f"{API}/update/pruefen")
+    assert r.status_code == 202 and r.json()["prueft"] is True
+    check = app.state.settings.data_dir / "update-pruefen"
+    assert check.exists()
+    assert client.post(f"{API}/update/pruefen").status_code == 202  # zweimal ist harmlos
+    # die Path-Unit entfernt die Datei: Prüfung fertig
+    check.unlink()
+    assert client.get(f"{API}/status").json()["update"]["prueft"] is False
+    # ohne Path-Unit bleibt sie liegen: nach zwei Minuten gilt sie nicht mehr als laufend
+    check.touch()
+    old = time.time() - 180
+    os.utime(check, (old, old))
+    assert client.get(f"{API}/status").json()["update"]["prueft"] is False
+
+
+def test_check_now_without_setup(client, app):
+    assert client.post(f"{API}/update/pruefen").status_code == 409
