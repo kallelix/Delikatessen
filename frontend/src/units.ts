@@ -6,6 +6,15 @@ export const UNITS = [
   "Schuss", "Spritzer", "Stiel", "Rolle", "Kugel",
 ];
 
+/** Einheiten, die ein Gewicht je Zutat brauchen (alles außer Masse und Volumen) */
+export const COUNT_UNITS = UNITS.filter((u) => !["g", "kg", "ml", "l"].includes(u));
+
+/** Lebensmittelgruppen für den Wochenwert (backend/delikatessen/catalog.py, FOOD_GROUPS) */
+export const FOOD_GROUPS = [
+  "Gemüse", "Obst", "Hülsenfrüchte", "Nüsse", "Kartoffeln", "Getreide", "Milch", "Fisch", "Fleisch", "Wurst",
+  "Eier", "Fett", "Sonstiges",
+];
+
 export function roundAmount(amount: number, unit: string | null): number {
   if (amount <= 0) return 0;
   let step: number;

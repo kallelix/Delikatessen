@@ -22,6 +22,7 @@ dependencies = [
     "anthropic>=2.0",
     "pywebpush>=2.0",
     "apscheduler>=3.11,<4",
+    "pyyaml>=6",
     "tzdata; sys_platform == 'win32'",
 ]
 
@@ -39,7 +40,7 @@ build-backend = "setuptools.build_meta"
 include = ["delikatessen*"]
 
 [tool.setuptools.package-data]
-delikatessen = ["data/*.json", "migrations/*.py", "migrations/*.mako", "migrations/versions/*.py"]
+delikatessen = ["data/*.json", "data/*.yml", "migrations/*.py", "migrations/*.mako", "migrations/versions/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

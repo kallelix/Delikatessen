@@ -7,7 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
-from ..units import normalize_unit
+from ..catalog import FOOD_GROUPS
+from ..units import COUNT_UNITS, normalize_unit
 
 Size = Literal["haupt", "klein"]
 Meal = Literal["mittag", "abend"]
@@ -32,6 +33,64 @@ class IngredientOut(Out):
     group: str | None = None
     default_unit: str | None
     aliases: list[str] = []
+    # Stufe 3
+    food_group: str | None = None
+    density: float | None = None
+    season_months: list[int] | None = None
+    weights: dict[str, float] = {}
+
+
+class IngredientUpdate(BaseModel):
+    """Zutaten pflegen (Pflichtenheft Stufe 3, Abschnitt 8). Der Name bleibt, der Katalog erkennt Zutaten daran."""
+
+    group_id: int | None = None
+    default_unit: str | None = Field(None, max_length=20)
+    food_group: str | None = None
+    density: float | None = Field(None, gt=0, le=5)
+    season_months: list[int] | None = None
+    weights: dict[str, float] = {}
+    aliases: list[str] = []
+
+    @field_validator("food_group")
+    @classmethod
+    def _group(cls, v: str | None) -> str | None:
+        if v is not None and v not in FOOD_GROUPS:
+            raise ValueError(f"Unbekannte Gruppe {v}")
+        return v
+
+    @field_validator("default_unit")
+    @classmethod
+    def _unit(cls, v: str | None) -> str | None:
+        return normalize_unit(v) if v and v.strip() else None
+
+    @field_validator("season_months")
+    @classmethod
+    def _season(cls, v: list[int] | None) -> list[int] | None:
+        if not v:
+            return None
+        if any(m < 1 or m > 12 for m in v):
+            raise ValueError("Monate gehen von 1 bis 12")
+        return sorted(set(v))
+
+    @field_validator("weights")
+    @classmethod
+    def _weights(cls, v: dict[str, float]) -> dict[str, float]:
+        out: dict[str, float] = {}
+        for unit, grams in v.items():
+            nu = normalize_unit(unit)
+            if nu not in COUNT_UNITS:
+                raise ValueError(f"Gewicht nur für Einheiten wie Stück oder EL, nicht für {unit}")
+            if not (0 < grams <= 10000):
+                raise ValueError(f"Gewicht für {nu} muss zwischen 0 und 10 kg liegen")
+            out[nu] = grams
+        return out
+
+
+class IngredientGap(BaseModel):
+    ingredient: IngredientOut
+    recipes: int
+    missing_group: bool
+    missing_units: list[str]
 
 
 class IngredientIn(BaseModel):

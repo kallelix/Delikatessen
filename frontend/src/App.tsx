@@ -15,6 +15,7 @@ import { RezeptBearbeiten } from "./pages/RezeptBearbeiten";
 import { RezeptDetail } from "./pages/RezeptDetail";
 import { Rezepte } from "./pages/Rezepte";
 import { Woche } from "./pages/Woche";
+import { ZutatenPflegen } from "./pages/ZutatenPflegen";
 
 const NAV = [
   { to: "/", label: "Woche", icon: "woche", end: true },
@@ -54,6 +55,7 @@ export function App() {
           <Route path="/mehr/journal" element={<Journal />} />
           <Route path="/mehr/familie" element={<Familie />} />
           <Route path="/mehr/einstellungen" element={<Einstellungen />} />
+          <Route path="/mehr/zutaten" element={<ZutatenPflegen />} />
           <Route path="*" element={<p className="empty">Diese Seite gibt es nicht.</p>} />
         </Routes>
       </main>

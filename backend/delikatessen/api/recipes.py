@@ -11,16 +11,27 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import history, search
-from ..catalog import learn_alias, normalize
+from ..catalog import default_food_group, learn_alias, normalize
 from ..config import Settings
+from ..grams import line_grams
 from ..images import ImageError, delete_image, save_image, valid_name
-from ..models import Ingredient, IngredientAlias, IngredientGroup, Recipe, RecipeIngredient, Tag
+from ..models import (
+    Ingredient,
+    IngredientAlias,
+    IngredientGroup,
+    IngredientUnitWeight,
+    Recipe,
+    RecipeIngredient,
+    Tag,
+)
 from ..units import format_quantity
-from .deps import get_db, get_settings, get_today
+from .deps import get_db, get_settings, get_today, require_adult
 from .schemas import (
     GroupOut,
+    IngredientGap,
     IngredientIn,
     IngredientOut,
+    IngredientUpdate,
     RecipeIn,
     RecipeIngredientOut,
     RecipeOut,
@@ -83,6 +94,10 @@ def ingredient_out(i: Ingredient) -> IngredientOut:
         group=i.group.name if i.group else None,
         default_unit=i.default_unit,
         aliases=sorted(a.alias for a in i.aliases),
+        food_group=i.food_group,
+        density=i.density,
+        season_months=i.season_months,
+        weights={w.unit: w.grams for w in i.weights},
     )
 
 
@@ -294,7 +309,91 @@ def post_ingredient(data: IngredientIn, db: Session = Depends(get_db)):
     if alias is not None:
         return ingredient_out(alias.ingredient)
     ing = Ingredient(name=data.name, group_id=data.group_id, default_unit=data.default_unit)
+    if data.group_id is not None:
+        ing.food_group = default_food_group(db.get(IngredientGroup, data.group_id).name)
     db.add(ing)
+    db.commit()
+    db.refresh(ing)
+    return ingredient_out(ing)
+
+
+@router.get("/ingredients/gaps", response_model=list[IngredientGap])
+def ingredient_gaps(db: Session = Depends(get_db)):
+    """Zutaten ohne Lebensmittelgruppe oder mit Einheiten ohne Gewicht, die häufigsten zuerst (Zutaten pflegen)."""
+    recipes: dict[int, set[int]] = {}
+    missing: dict[int, set[str]] = {}
+    rows = db.scalars(
+        select(RecipeIngredient)
+        .join(Recipe)
+        .where(RecipeIngredient.ingredient_id.is_not(None), Recipe.excluded.is_(False))
+    ).all()
+    for ri in rows:
+        recipes.setdefault(ri.ingredient_id, set()).add(ri.recipe_id)
+        if line_grams(ri.amount, ri.unit, ri.ingredient).gap:
+            missing.setdefault(ri.ingredient_id, set()).add(ri.unit or "Stück")
+    no_group = set(db.scalars(select(Ingredient.id).where(Ingredient.food_group.is_(None))))
+    ids = no_group | set(missing)
+    items = db.scalars(select(Ingredient).where(Ingredient.id.in_(ids))).all() if ids else []
+    out = [
+        IngredientGap(
+            ingredient=ingredient_out(i),
+            recipes=len(recipes.get(i.id, ())),
+            missing_group=i.id in no_group,
+            missing_units=sorted(missing.get(i.id, ())),
+        )
+        for i in items
+    ]
+    out.sort(key=lambda g: (-g.recipes, normalize(g.ingredient.name)))
+    return out
+
+
+@router.get("/ingredients/{ingredient_id}", response_model=IngredientOut)
+def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)):
+    ing = db.get(Ingredient, ingredient_id)
+    if ing is None:
+        raise HTTPException(404, "Zutat nicht gefunden")
+    return ingredient_out(ing)
+
+
+@router.put("/ingredients/{ingredient_id}", response_model=IngredientOut, dependencies=[Depends(require_adult)])
+def put_ingredient(ingredient_id: int, data: IngredientUpdate, db: Session = Depends(get_db)):
+    """Gruppe, Aliasse, Gewichte, Dichte und Saison einer Zutat pflegen. Gilt sofort für alle Rezepte."""
+    ing = db.get(Ingredient, ingredient_id)
+    if ing is None:
+        raise HTTPException(404, "Zutat nicht gefunden")
+    if data.group_id is not None and db.get(IngredientGroup, data.group_id) is None:
+        raise HTTPException(422, "Unbekannte Kategorie")
+
+    own = normalize(ing.name)
+    wanted = {normalize(a) for a in data.aliases} - {own, ""}
+    for alias in sorted(wanted):
+        other = db.scalar(select(IngredientAlias).where(IngredientAlias.alias == alias))
+        if other is not None and other.ingredient_id != ing.id:
+            raise HTTPException(409, f"„{alias}“ ist schon ein anderer Name für {other.ingredient.name}")
+        named = db.scalar(select(Ingredient).where(func.lower(Ingredient.name) == alias, Ingredient.id != ing.id))
+        if named is not None:
+            raise HTTPException(409, f"„{alias}“ ist schon eine eigene Zutat")
+
+    ing.group_id = data.group_id
+    ing.default_unit = data.default_unit
+    ing.food_group = data.food_group
+    ing.density = data.density
+    ing.season_months = data.season_months
+    current = {a.alias: a for a in ing.aliases}
+    for alias, row in current.items():
+        if alias not in wanted:
+            ing.aliases.remove(row)
+    for alias in wanted - set(current):
+        ing.aliases.append(IngredientAlias(alias=alias))
+    rows = {w.unit: w for w in ing.weights}
+    for unit, row in rows.items():
+        if unit not in data.weights:
+            ing.weights.remove(row)
+    for unit, grams in data.weights.items():
+        if unit in rows:
+            rows[unit].grams = grams
+        else:
+            ing.weights.append(IngredientUnitWeight(unit=unit, grams=grams))
     db.commit()
     db.refresh(ing)
     return ingredient_out(ing)

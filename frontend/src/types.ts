@@ -18,6 +18,28 @@ export interface Ingredient {
   group: string | null;
   default_unit: string | null;
   aliases: string[];
+  // Stufe 3: Lebensmittelgruppe, Dichte (g/ml), Saisonmonate 1–12, Gramm je Einheit
+  food_group: string | null;
+  density: number | null;
+  season_months: number[] | null;
+  weights: Record<string, number>;
+}
+
+export interface IngredientGap {
+  ingredient: Ingredient;
+  recipes: number;
+  missing_group: boolean;
+  missing_units: string[];
+}
+
+export interface IngredientUpdate {
+  group_id: number | null;
+  default_unit: string | null;
+  food_group: string | null;
+  density: number | null;
+  season_months: number[] | null;
+  weights: Record<string, number>;
+  aliases: string[];
 }
 
 export interface RecipeIngredient {

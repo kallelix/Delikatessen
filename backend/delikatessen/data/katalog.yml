@@ -1,0 +1,650 @@
+# Grundkatalog von Delikatessen
+#
+# Quelle für Zutaten, Aliasse, Lebensmittelgruppen, Gewichte, Dichte und Saison (Pflichtenheft Stufe 3,
+# Abschnitt 4). Beim Start gleicht die App die Datenbank mit dieser Datei ab: Neue Zutaten und Aliasse kommen
+# dazu, und jeder Wert, der sich hier seit dem letzten Start geändert hat, wird übernommen. Was die Familie in
+# „Zutaten pflegen“ geändert hat, bleibt stehen, solange derselbe Wert hier unverändert bleibt.
+# Zutaten werden über ihren Namen erkannt. Ein umbenannter Eintrag ist für die App eine neue Zutat.
+#
+# Je Kategorie:
+#   gruppe    Lebensmittelgruppe für den Wochenwert, gilt für alle Zutaten der Kategorie
+#   zutaten   Zutaten mit Namen als Schlüssel
+#
+# Je Zutat (nur einheit ist Pflicht):
+#   einheit   Standard-Einheit im Rezept
+#   aliasse   weitere Namen, unter denen die Zutat erkannt wird
+#   gruppe    nur wenn sie von der Gruppe der Kategorie abweicht
+#   gewicht   Gramm je Einheit, essbarer Anteil einer mittleren Größe, etwa {Stück: 80}
+#   dichte    Gramm je Milliliter, nur wenn nicht 1,0; bei Pulver gestrichen gemessen
+#   saison    Monate mit Ernte im Freiland in Mitteleuropa, etwa "4-6" oder "1-3, 7-12";
+#             "ganzjährig (Grund)" zählt neutral. Saison ist nur ein Bonus beim Planen, kein Ausschluss.
+#
+# Gruppen: Gemüse, Obst, Hülsenfrüchte, Nüsse, Kartoffeln, Getreide, Milch, Fisch, Fleisch, Wurst, Eier,
+# Fett, Sonstiges. Werte mit Dezimalpunkt schreiben (0.5).
+
+tags: [Mittag, Snack, Abendessen, vegetarisch, Pasta, Reisgericht]
+
+kategorien:
+  Gemüse:
+    gruppe: Gemüse
+    zutaten:
+      Kartoffel:
+        einheit: g
+        aliasse: [Kartoffeln, Erdapfel, festkochende Kartoffeln, mehligkochende Kartoffeln]
+        gruppe: Kartoffeln  # DGE zählt Kartoffeln nicht zum Gemüse
+        gewicht: {Stück: 100}
+        saison: ganzjährig (Lagerware)
+      Süßkartoffel:
+        einheit: g
+        gruppe: Kartoffeln  # wie Kartoffel
+        gewicht: {Stück: 300}
+        saison: ganzjährig (Import)
+      Zwiebel:
+        einheit: Stück
+        aliasse: [rote Zwiebel, Gemüsezwiebel]
+        gewicht: {Stück: 80}  # geschält
+        saison: ganzjährig (Lagerware)
+      Frühlingszwiebel:
+        einheit: Stück
+        aliasse: [Lauchzwiebel]
+        gewicht: {Stück: 15}
+        saison: "4-10"
+      Knoblauch:
+        einheit: Zehe
+        aliasse: [Knoblauchzehe, Knoblauchzehen]
+        gewicht: {Zehe: 4, Knolle: 50}
+        saison: ganzjährig (Lagerware)
+      Schalotte:
+        einheit: Stück
+        gewicht: {Stück: 25}
+        saison: ganzjährig (Lagerware)
+      Lauch:
+        einheit: Stange
+        aliasse: [Porree]
+        gewicht: {Stange: 200}  # geputzt
+        saison: "1-3, 7-12"  # Winterlauch bis März
+      Karotte:
+        einheit: Stück
+        aliasse: [Möhre, Möhren, Mohrrübe]
+        gewicht: {Stück: 80}  # geschält
+        saison: ganzjährig (Lagerware)
+      Sellerie:
+        einheit: g
+        aliasse: [Knollensellerie, Selleriestange, Staudensellerie]
+        gewicht: {Stange: 50, Knolle: 600}  # Stange: Staudensellerie; Knolle: geschält
+        saison: ganzjährig (Knolle ist Lagerware)
+      Tomate:
+        einheit: Stück
+        aliasse: [Kirschtomate, Cherrytomate, Cocktailtomate]
+        gewicht: {Stück: 100}  # Alias Kirschtomate wiegt etwa 15 g
+        saison: "7-10"
+      Paprika:
+        einheit: Stück
+        aliasse: [Paprikaschote, rote Paprika, gelbe Paprika, grüne Paprika]
+        gewicht: {Stück: 150}  # ohne Kerne
+        saison: "7-10"
+      Zucchini:
+        einheit: Stück
+        gewicht: {Stück: 250}
+        saison: "6-9"
+      Aubergine:
+        einheit: Stück
+        gewicht: {Stück: 300}
+        saison: "7-9"
+      Gurke:
+        einheit: Stück
+        aliasse: [Salatgurke]
+        gewicht: {Stück: 400}
+        saison: "6-9"
+      Brokkoli:
+        einheit: g
+        aliasse: [Broccoli]
+        gewicht: {Kopf: 400}  # Kopf: Röschen
+        saison: "6-10"
+      Blumenkohl:
+        einheit: g
+        gewicht: {Kopf: 600}  # Kopf: Röschen
+        saison: "6-10"
+      Spinat:
+        einheit: g
+        aliasse: [Blattspinat, Babyspinat]
+        gewicht: {Handvoll: 30}
+        saison: "3-5, 9-11"
+      Kohlrabi:
+        einheit: Stück
+        gewicht: {Stück: 250}  # geschält
+        saison: "5-10"
+      Weißkohl:
+        einheit: g
+        aliasse: [Weißkraut]
+        saison: "6-11"
+      Rotkohl:
+        einheit: g
+        aliasse: [Rotkraut, Blaukraut]
+        saison: "8-11"
+      Wirsing:
+        einheit: g
+        saison: "1-2, 6-12"
+      Rosenkohl:
+        einheit: g
+        saison: "1-2, 10-12"
+      Grüne Bohnen:
+        einheit: g
+        aliasse: [Brechbohnen, Prinzessbohnen]
+        saison: "7-9"
+      Erbsen:
+        einheit: g
+        aliasse: [TK-Erbsen, Erbse]
+        saison: "6-8"
+      Mais:
+        einheit: g
+        aliasse: [Zuckermais]
+        saison: "8-10"
+      Champignons:
+        einheit: g
+        aliasse: [Champignon, Pilze]
+        gewicht: {Stück: 20}
+        saison: ganzjährig (Zucht)
+      Kürbis:
+        einheit: g
+        aliasse: [Hokkaido, Hokkaidokürbis, Butternut]
+        gewicht: {Stück: 1000}  # Stück: Hokkaido ohne Kerne
+        saison: "8-11"
+      Rote Bete:
+        einheit: g
+        aliasse: [Rote Beete]
+        saison: "7-10"
+      Pastinake:
+        einheit: Stück
+        gewicht: {Stück: 150}  # geschält
+        saison: "1-3, 10-12"
+      Fenchel:
+        einheit: Stück
+        gewicht: {Stück: 250}  # geputzt
+        saison: "6-10"
+      Spargel:
+        einheit: g
+        saison: "4-6"  # bis 24. Juni
+      Radieschen:
+        einheit: Bund
+        gewicht: {Bund: 150}  # ohne Blätter
+        saison: "4-9"
+      Kopfsalat:
+        einheit: Kopf
+        aliasse: [Salat, Eisbergsalat, Romanasalat]
+        gewicht: {Kopf: 250}  # Alias Eisbergsalat eher 500 g
+        saison: "5-10"
+      Rucola:
+        einheit: g
+        gewicht: {Handvoll: 20}
+        saison: "5-10"
+      Avocado:
+        einheit: Stück
+        gewicht: {Stück: 150}  # ohne Kern und Schale
+        saison: ganzjährig (Import)
+
+  Obst:
+    gruppe: Obst
+    zutaten:
+      Apfel:
+        einheit: Stück
+        aliasse: [Äpfel]
+        gewicht: {Stück: 140}  # ohne Kerngehäuse
+        saison: ganzjährig (Lagerware)
+      Banane:
+        einheit: Stück
+        gewicht: {Stück: 120}  # geschält
+        saison: ganzjährig (Import)
+      Zitrone:
+        einheit: Stück
+        aliasse: [Zitronensaft, Zitronenschale]
+        gewicht: {Stück: 100}  # Saft etwa 40 ml
+        saison: ganzjährig (Import)
+      Limette:
+        einheit: Stück
+        aliasse: [Limettensaft]
+        gewicht: {Stück: 60}  # Saft etwa 25 ml
+        saison: ganzjährig (Import)
+      Orange:
+        einheit: Stück
+        aliasse: [Orangensaft]
+        gewicht: {Stück: 180}  # geschält
+        saison: ganzjährig (Import)
+      Erdbeere:
+        einheit: g
+        saison: "5-7"
+      Heidelbeere:
+        einheit: g
+        aliasse: [Blaubeere]
+        saison: "7-9"
+      Himbeere:
+        einheit: g
+        saison: "6-9"
+      Birne:
+        einheit: Stück
+        gewicht: {Stück: 150}  # ohne Kerngehäuse
+        saison: "8-11"
+      Rosine:
+        einheit: g
+        saison: ganzjährig (getrocknet)
+
+  Kräuter:
+    gruppe: Sonstiges
+    zutaten:
+      Petersilie:
+        einheit: Bund
+        aliasse: [glatte Petersilie, krause Petersilie]
+        gewicht: {Bund: 30}
+        saison: "5-10"
+      Schnittlauch:
+        einheit: Bund
+        gewicht: {Bund: 30}
+        saison: "3-10"
+      Basilikum:
+        einheit: Bund
+        gewicht: {Bund: 25}
+        saison: "6-9"
+      Dill:
+        einheit: Bund
+        gewicht: {Bund: 20}
+        saison: "5-9"
+      Koriander:
+        einheit: Bund
+        aliasse: [Koriandergrün]
+        gewicht: {Bund: 25}
+        saison: "6-9"
+      Thymian:
+        einheit: Zweig
+        gewicht: {Zweig: 1}
+        saison: "5-10"
+      Rosmarin:
+        einheit: Zweig
+        gewicht: {Zweig: 2}
+        saison: "5-10"
+      Oregano:
+        einheit: TL
+        gewicht: {TL: 1}  # getrocknet
+        saison: ganzjährig (getrocknet)
+      Minze:
+        einheit: Bund
+        gewicht: {Bund: 20}
+        saison: "5-9"
+      Lorbeerblatt:
+        einheit: Blatt
+        aliasse: [Lorbeer, Lorbeerblätter]
+        gewicht: {Blatt: 0.2}
+        saison: ganzjährig (getrocknet)
+
+  Gewürze:
+    gruppe: Sonstiges
+    zutaten:
+      Salz:
+        einheit: Prise
+        aliasse: [Meersalz]
+        gewicht: {Prise: 0.5}  # wie der Rückfallwert
+        dichte: 1.2
+      Pfeffer:
+        einheit: Prise
+        aliasse: [schwarzer Pfeffer]
+        gewicht: {Prise: 0.2}
+      Paprikapulver:
+        einheit: TL
+        aliasse: [Paprika edelsüß, Paprika rosenscharf]
+        gewicht: {TL: 2.5}
+        dichte: 0.5
+      Currypulver:
+        einheit: TL
+        aliasse: [Curry]
+        gewicht: {TL: 2.5}
+        dichte: 0.5
+      Kreuzkümmel:
+        einheit: TL
+        aliasse: [Cumin]
+        gewicht: {TL: 2.5}
+        dichte: 0.5
+      Zimt:
+        einheit: TL
+        gewicht: {TL: 2.5}
+        dichte: 0.5
+      Muskatnuss:
+        einheit: Prise
+        aliasse: [Muskat]
+        gewicht: {Prise: 0.2}
+      Chili:
+        einheit: Stück
+        aliasse: [Chilischote, Chiliflocken]
+        gewicht: {Stück: 10}  # frische Schote, Alias Chiliflocken passt nicht
+      Ingwer:
+        einheit: g
+        gewicht: {Stück: 20}  # Stück: daumengroß
+      Gemüsebrühe:
+        einheit: ml
+        aliasse: [Brühe, Gemüsefond]
+      Hühnerbrühe:
+        einheit: ml
+        aliasse: [Geflügelbrühe, Hühnerfond]
+      Rinderbrühe:
+        einheit: ml
+        aliasse: [Rinderfond]
+      Vanillezucker:
+        einheit: Packung
+        aliasse: [Vanille]
+        gewicht: {Packung: 8}
+
+  Milchprodukte:
+    gruppe: Milch
+    zutaten:
+      Milch:
+        einheit: ml
+        aliasse: [Vollmilch]
+      Butter:
+        einheit: g
+        gruppe: Fett
+        gewicht: {EL: 12}
+      Sahne:
+        einheit: ml
+        aliasse: [Schlagsahne, süße Sahne]
+        gruppe: Fett  # fettreich, eher Fett als Milch
+        gewicht: {Becher: 200}
+      Schmand:
+        einheit: g
+        gruppe: Fett  # wie Sahne
+        gewicht: {Becher: 200}
+      Saure Sahne:
+        einheit: g
+        gewicht: {Becher: 200}
+      Crème fraîche:
+        einheit: g
+        aliasse: [Creme fraiche]
+        gruppe: Fett  # wie Sahne
+        gewicht: {Becher: 200}
+      Joghurt:
+        einheit: g
+        aliasse: [Naturjoghurt, griechischer Joghurt]
+        gewicht: {Becher: 150}
+      Quark:
+        einheit: g
+        aliasse: [Magerquark, Speisequark]
+        gewicht: {Packung: 250}
+      Frischkäse:
+        einheit: g
+        gewicht: {Packung: 200}
+
+  Käse:
+    gruppe: Milch
+    zutaten:
+      Parmesan:
+        einheit: g
+        aliasse: [Parmigiano, Grana Padano]
+      Mozzarella:
+        einheit: g
+        gewicht: {Kugel: 125}  # Kugel: Abtropfgewicht
+      Gouda:
+        einheit: g
+      Emmentaler:
+        einheit: g
+      Reibekäse:
+        einheit: g
+        aliasse: [geriebener Käse, Käse, Bergkäse]
+      Feta:
+        einheit: g
+        aliasse: [Schafskäse]
+        gewicht: {Packung: 200}
+
+  Eier:
+    gruppe: Eier
+    zutaten:
+      Ei:
+        einheit: Stück
+        aliasse: [Eier]
+        gewicht: {Stück: 50}  # Größe M ohne Schale
+
+  Fleisch:
+    gruppe: Fleisch
+    zutaten:
+      Hackfleisch:
+        einheit: g
+        aliasse: [Rinderhack, gemischtes Hackfleisch, Hack]
+      Hähnchenbrust:
+        einheit: g
+        aliasse: [Hähnchenbrustfilet, Hühnerbrust]
+        gewicht: {Stück: 150}
+      Hähnchenschenkel:
+        einheit: Stück
+        gewicht: {Stück: 170}  # ohne Knochen, mit Knochen etwa 250 g
+      Putenbrust:
+        einheit: g
+      Schweinefilet:
+        einheit: g
+      Schweinebraten:
+        einheit: g
+      Rindfleisch:
+        einheit: g
+        aliasse: [Rindergulasch, Gulasch]
+      Speck:
+        einheit: g
+        aliasse: [Bacon, Schinkenwürfel, Speckwürfel]
+        gruppe: Wurst  # verarbeitet, zählt mit Fleisch zur Obergrenze
+      Schinken:
+        einheit: g
+        aliasse: [Kochschinken]
+        gruppe: Wurst  # wie Speck
+      Würstchen:
+        einheit: Stück
+        aliasse: [Wiener, Bratwurst]
+        gruppe: Wurst
+        gewicht: {Stück: 50}  # Wiener; Alias Bratwurst eher 120 g
+
+  Fisch und Meeresfrüchte:
+    gruppe: Fisch
+    zutaten:
+      Lachs:
+        einheit: g
+        aliasse: [Lachsfilet]
+        gewicht: {Stück: 125}  # Stück: Filet
+      Seelachs:
+        einheit: g
+        aliasse: [Seelachsfilet]
+      Thunfisch:
+        einheit: Dose
+        gewicht: {Dose: 140}  # Abtropfgewicht der 185-g-Dose
+      Fischstäbchen:
+        einheit: Stück
+        gewicht: {Stück: 30}
+      Garnelen:
+        einheit: g
+        aliasse: [Shrimps, Krabben, Garnele]
+
+  Nüsse:
+    gruppe: Nüsse
+    zutaten:
+      Walnuss:
+        einheit: g
+        aliasse: [Walnüsse, Walnusskerne]
+      Haselnuss:
+        einheit: g
+        aliasse: [Haselnüsse, gemahlene Haselnüsse]
+      Mandel:
+        einheit: g
+        aliasse: [Mandeln, gemahlene Mandeln]
+      Erdnuss:
+        einheit: g
+        aliasse: [Erdnüsse, Erdnussbutter]
+      Cashewkern:
+        einheit: g
+        aliasse: [Cashews, Cashewkerne]
+      Pinienkern:
+        einheit: g
+        aliasse: [Pinienkerne]
+
+  Getreide und Teigwaren:
+    gruppe: Getreide
+    zutaten:
+      Spaghetti:
+        einheit: g
+      Nudeln:
+        einheit: g
+        aliasse: [Pasta, Penne, Fusilli, Farfalle, Rigatoni, Tagliatelle, Makkaroni]
+      Lasagneplatten:
+        einheit: Stück
+        aliasse: [Lasagneblätter]
+        gewicht: {Stück: 20}  # trocken
+      Spätzle:
+        einheit: g
+      Gnocchi:
+        einheit: g
+      Reis:
+        einheit: g
+        aliasse: [Langkornreis, Basmatireis, Jasminreis, Risottoreis, Milchreis]
+        dichte: 0.85
+      Couscous:
+        einheit: g
+        dichte: 0.7
+      Bulgur:
+        einheit: g
+      Haferflocken:
+        einheit: g
+        dichte: 0.4
+      Brot:
+        einheit: Scheibe
+        aliasse: [Toast, Toastbrot, Brötchen, Baguette]
+        gewicht: {Scheibe: 40}  # Alias Toast etwa 25 g, Brötchen etwa 60 g
+      Semmelbrösel:
+        einheit: g
+        aliasse: [Paniermehl]
+        dichte: 0.45
+      Tortilla:
+        einheit: Stück
+        aliasse: [Wraps, Tortillas]
+        gewicht: {Stück: 60}  # Wrap, etwa 25 cm
+
+  Hülsenfrüchte:
+    gruppe: Hülsenfrüchte
+    zutaten:
+      Linsen:
+        einheit: g
+        aliasse: [rote Linsen, Linse, Berglinsen]
+      Kichererbsen:
+        einheit: g
+        aliasse: [Kichererbse]
+        gewicht: {Dose: 240}  # Dose: Abtropfgewicht der 400-g-Dose
+      Kidneybohnen:
+        einheit: Dose
+        gewicht: {Dose: 250}  # Abtropfgewicht der 400-g-Dose
+      Weiße Bohnen:
+        einheit: Dose
+        gewicht: {Dose: 250}  # Abtropfgewicht der 400-g-Dose
+      Tofu:
+        einheit: g
+
+  Backzutaten:
+    gruppe: Sonstiges
+    zutaten:
+      Mehl:
+        einheit: g
+        aliasse: [Weizenmehl, Dinkelmehl, Mehl Type 405]
+        gruppe: Getreide
+        gewicht: {EL: 10}
+        dichte: 0.55
+      Zucker:
+        einheit: g
+        aliasse: [brauner Zucker, Rohrzucker]
+        gewicht: {EL: 15}
+        dichte: 0.85
+      Puderzucker:
+        einheit: g
+        dichte: 0.55
+      Backpulver:
+        einheit: Packung
+        gewicht: {Packung: 15}
+      Hefe:
+        einheit: Würfel
+        aliasse: [Trockenhefe, frische Hefe]
+        gewicht: {Würfel: 42}  # frisch; Trockenhefe-Tütchen 7 g
+      Speisestärke:
+        einheit: EL
+        aliasse: [Stärke, Maisstärke]
+        gewicht: {EL: 10}
+        dichte: 0.65
+      Kakao:
+        einheit: EL
+        aliasse: [Kakaopulver]
+        gewicht: {EL: 8}
+        dichte: 0.5
+      Schokolade:
+        einheit: g
+        aliasse: [Zartbitterschokolade]
+      Honig:
+        einheit: EL
+        gewicht: {EL: 20}
+        dichte: 1.4
+
+  Öle und Fette:
+    gruppe: Fett
+    zutaten:
+      Olivenöl:
+        einheit: EL
+        gewicht: {EL: 14}
+        dichte: 0.92
+      Öl:
+        einheit: EL
+        aliasse: [Rapsöl, Sonnenblumenöl, Pflanzenöl, Speiseöl]
+        gewicht: {EL: 14}
+        dichte: 0.92
+      Sesamöl:
+        einheit: TL
+        gewicht: {TL: 5}
+        dichte: 0.92
+
+  Saucen und Würzmittel:
+    gruppe: Sonstiges
+    zutaten:
+      Tomatenmark:
+        einheit: EL
+        gruppe: Gemüse  # zählt zur Gemüseregel
+        gewicht: {EL: 16}
+        dichte: 1.1
+      Passierte Tomaten:
+        einheit: ml
+        aliasse: [Passata, Tomaten passiert]
+        gruppe: Gemüse  # zählt zur Gemüseregel
+        gewicht: {Packung: 500}
+      Gehackte Tomaten:
+        einheit: Dose
+        aliasse: [Dosentomaten, stückige Tomaten]
+        gruppe: Gemüse  # zählt zur Gemüseregel
+        gewicht: {Dose: 400}  # ganze Dose
+      Kokosmilch:
+        einheit: ml
+        gruppe: Fett
+        gewicht: {Dose: 400}
+      Sojasauce:
+        einheit: EL
+        aliasse: [Sojasoße]
+        gewicht: {EL: 18}
+        dichte: 1.2
+      Senf:
+        einheit: TL
+        aliasse: [mittelscharfer Senf, Dijonsenf]
+        gewicht: {TL: 6}
+      Essig:
+        einheit: EL
+        aliasse: [Weißweinessig, Balsamico, Apfelessig]
+        gewicht: {EL: 15}
+      Ketchup:
+        einheit: EL
+        gewicht: {EL: 17}
+        dichte: 1.15
+      Mayonnaise:
+        einheit: EL
+        gewicht: {EL: 14}
+      Pesto:
+        einheit: Glas
+        aliasse: [Basilikumpesto]
+        gruppe: Fett  # überwiegend Öl
+        gewicht: {Glas: 190}  # ganzes Glas
+      Wein:
+        einheit: ml
+        aliasse: [Weißwein, Rotwein]
+      Wasser:
+        einheit: ml

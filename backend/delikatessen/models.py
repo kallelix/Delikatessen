@@ -61,10 +61,37 @@ class Ingredient(Base):
     name: Mapped[str] = mapped_column(String(80), unique=True)
     group_id: Mapped[int | None] = mapped_column(ForeignKey("ingredient_group.id", ondelete="SET NULL"))
     default_unit: Mapped[str | None] = mapped_column(String(20))
+    # Stufe 3 (Pflichtenheft Stufe 3, Abschnitt 4)
+    food_group: Mapped[str | None] = mapped_column(String(20))
+    density: Mapped[float | None] = mapped_column(Float)  # g/ml, leer heißt 1,0
+    season_months: Mapped[list[int] | None] = mapped_column(JSON)  # leer heißt ganzjährig neutral
+    # zuletzt aus katalog.yml übernommener Stand, für den Abgleich beim Start (catalog.sync)
+    catalog_applied: Mapped[dict | None] = mapped_column(JSON)
 
     group: Mapped[IngredientGroup | None] = relationship(lazy="joined")
     aliases: Mapped[list[IngredientAlias]] = relationship(
         back_populates="ingredient", cascade="all, delete-orphan", lazy="selectin"
+    )
+    weights: Mapped[list[IngredientUnitWeight]] = relationship(
+        back_populates="ingredient", cascade="all, delete-orphan", lazy="selectin", order_by="IngredientUnitWeight.unit"
+    )
+
+
+class IngredientUnitWeight(Base):
+    """Gewicht einer Einheit einer Zutat, etwa Zwiebel Stück 80 g."""
+
+    __tablename__ = "ingredient_unit_weight"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredient.id", ondelete="CASCADE"))
+    unit: Mapped[str] = mapped_column(String(20))
+    grams: Mapped[float] = mapped_column(Float)
+
+    ingredient: Mapped[Ingredient] = relationship(back_populates="weights")
+
+    __table_args__ = (
+        UniqueConstraint("ingredient_id", "unit", name="uq_unit_weight"),
+        CheckConstraint("grams > 0", name="unit_weight_grams"),
     )
 
 

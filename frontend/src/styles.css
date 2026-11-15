@@ -646,6 +646,24 @@ button.badge {
   width: 1.4rem;
   height: 1.4rem;
 }
+.weight-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem auto var(--tap);
+  align-items: center;
+  gap: 0.5rem;
+}
+.weight-row .link-btn {
+  min-height: var(--tap);
+  justify-content: center;
+}
+.chips.months {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.chips.months .chip {
+  justify-content: center;
+  padding: 0;
+}
 .bring-settings {
   display: flex;
   flex-direction: column;

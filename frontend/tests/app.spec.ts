@@ -367,6 +367,30 @@ test("Gelöschtes Rezept verschwindet sofort aus der Liste", async () => {
 });
 
 // zuletzt: danach steht die App auf "Update läuft"
+test("Zutaten pflegen: Gewicht, Gruppe und Saison", async () => {
+  await page.goto("/mehr");
+  await page.getByRole("link", { name: "Zutaten pflegen" }).click();
+  await expect(page.getByRole("heading", { name: /^Offen/ })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Zutat suchen" }).fill("Mais");
+  await page.getByRole("button", { name: /^Mais/ }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Mais" });
+  await expect(sheet.getByLabel("Gruppe")).toHaveValue("Gemüse");
+  await expect(sheet.getByRole("button", { name: "August" })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: "+ Einheit" }).click();
+  await sheet.getByLabel("Einheit", { exact: true }).last().selectOption("Dose");
+  await sheet.getByLabel("Gramm je Dose").fill("285");
+  await sheet.getByRole("button", { name: "Juli" }).click();
+  await shots("15-zutaten-pflegen");
+  await sheet.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("Mais gespeichert")).toBeVisible();
+
+  await page.getByRole("searchbox", { name: "Zutat suchen" }).fill("Mais");
+  await page.getByRole("button", { name: /^Mais/ }).first().click();
+  await expect(sheet.getByLabel("Gramm je Dose")).toHaveValue("285");
+  await expect(sheet.getByRole("button", { name: "Juli" })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: "Abbrechen" }).click();
+});
+
 test("Update-Hinweis und Knopf für Erwachsene", async () => {
   await page.goto("/mehr");
   await expect(page.getByText("Version v9.9.9 ist verfügbar")).toBeVisible();

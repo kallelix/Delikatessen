@@ -1,6 +1,6 @@
 # Delikatessen – Pflichtenheft Stufe 3 (Entwurf)
 
-Stand: 2026-11-13 · Entwurf, nicht freigegeben
+Stand: 2026-11-15 · Entwurf, nicht freigegeben
 
 ## 1. Überblick und Umfang
 
@@ -56,16 +56,16 @@ flowchart LR
 
 ## 4. Datenmodell
 
-Die Erweiterung sitzt fast vollständig am Zutatenkatalog, wie im Pflichtenheft Abschnitt 4 vorgesehen („später Saison, BLS-Code“). Eine Migration `0004_ernaehrung` ergänzt:
+Die Erweiterung sitzt fast vollständig am Zutatenkatalog, wie im Pflichtenheft Abschnitt 4 vorgesehen („später Saison, BLS-Code“). Zwei Migrationen ergänzen ihn, `0004_katalog` mit M8 und `0005_bls` mit M10:
 
-| Tabelle | Neue Felder | Bedeutung |
-| --- | --- | --- |
-| `ingredient` | `bls_code` | Zuordnung zu einem BLS-Lebensmittel, möglichst die rohe Form. Leer heißt: keine Nährwerte |
-| `ingredient` | `food_group` | Gruppe für den Wochenwert: Gemüse, Obst, Hülsenfrüchte, Nüsse, Kartoffeln, Getreide, Milch, Fisch, Fleisch, Wurst, Eier, Fett, Sonstiges |
-| `ingredient` | `density` | Gramm je Milliliter, Vorgabe 1,0, etwa Öl 0,92 und Honig 1,4 |
-| `ingredient` | `season_months` | Monate mit Ernte aus der Region, leer für ganzjährig oder Lagerware |
-| `ingredient_unit_weight` (neu) | `ingredient_id`, `unit`, `grams` | Gewicht einer Einheit, etwa Zwiebel Stück 80 g oder Petersilie Bund 30 g |
-| `bls_food` (neu) | `code`, `name`, acht Nährwerte | Auszug aus dem BLS, beim Start aus der Datei im Repo geladen, wenn sich die Version geändert hat |
+| Migration | Tabelle | Neue Felder | Bedeutung |
+| --- | --- | --- | --- |
+| 0004 | `ingredient` | `food_group` | Gruppe für den Wochenwert: Gemüse, Obst, Hülsenfrüchte, Nüsse, Kartoffeln, Getreide, Milch, Fisch, Fleisch, Wurst, Eier, Fett, Sonstiges |
+| 0004 | `ingredient` | `density` | Gramm je Milliliter, Vorgabe 1,0, etwa Öl 0,92 und Honig 1,4 |
+| 0004 | `ingredient` | `season_months` | Monate mit Ernte aus der Region, leer für ganzjährig, Lager- oder Importware |
+| 0004 | `ingredient_unit_weight` (neu) | `ingredient_id`, `unit`, `grams` | Gewicht einer Einheit, etwa Zwiebel Stück 80 g oder Petersilie Bund 30 g |
+| 0005 | `ingredient` | `bls_code` | Zuordnung zu einem BLS-Lebensmittel, möglichst die rohe Form. Leer heißt: keine Nährwerte |
+| 0005 | `bls_food` (neu) | `code`, `name`, acht Nährwerte | Auszug aus dem BLS, beim Start aus der Datei im Repo geladen, wenn sich die Version geändert hat |
 
 **Umrechnung in Gramm** in dieser Reihenfolge:
 
@@ -74,9 +74,26 @@ Die Erweiterung sitzt fast vollständig am Zutatenkatalog, wie im Pflichtenheft 
 3. Allgemeine Rückfallwerte nur für Löffelmaße: EL 15 ml, TL 5 ml, Msp. und Prise 0,5 g, jeweils mal Dichte.
 4. Sonst bleibt die Zeile eine Lücke. Zeilen ohne Menge („Salz nach Geschmack“) zählen weder als Wert noch als Lücke.
 
-**Grundkatalog:** Die 146 Zutaten in `katalog.json` bekommen BLS-Code, Lebensmittelgruppe, Dichte wo nötig und ein Gewicht für jede Standard-Einheit, die nicht g oder ml ist. Heute sind das 68 Zutaten, etwa mit Stück, EL oder Bund. Die Gewichte sind eigene Durchschnittswerte, der BLS enthält keine Stückgewichte.
+**Grundkatalog:** Die 146 Zutaten des Grundkatalogs bekommen eine Lebensmittelgruppe, Dichte wo nötig und ein Gewicht für jede Standard-Einheit, die nicht g oder ml ist. Heute sind das 68 Zutaten, etwa mit Stück, EL oder Bund. Die Gewichte sind eigene Durchschnittswerte für den essbaren Anteil einer mittleren Größe, denn auch die BLS-Werte gelten je 100 g essbaren Anteil. Der BLS enthält keine Stückgewichte. Den BLS-Code bekommen die Zutaten erst mit M10. Alle Werte stehen in [`katalog.yml`](../backend/delikatessen/data/katalog.yml), eine Zutat mit allen Angaben an einer Stelle, Begründungen als Kommentar.
 
-**Saisontabelle:** Eigene Monatsangaben für die Zutaten der Gruppen Gemüse, Obst und Kräuter im Grundkatalog. Sie entstehen im Projekt aus allgemeinem Wissen und werden von der Familie gegengelesen. Sie werden nicht aus einer der Tabellen in Abschnitt 2 übernommen. Lagerware wie Kartoffeln, Zwiebeln und Äpfel bleibt ohne Angabe und ist damit neutral.
+**Pflege im Quelltext:** Fällt ein Wert auf, wird er in `katalog.yml` geändert und mit dem nächsten Release ausgerollt. Beim Start gleicht die App die Datenbank mit der Datei ab (Dreiwege-Abgleich):
+
+- Neue Zutaten und neue Aliasse kommen dazu.
+- Ein Wert, der sich in der Datei seit dem letzten Start geändert hat, wird übernommen, auch wenn die Familie ihn geändert hatte.
+- Ein Wert, der in der Datei gleich geblieben ist, bleibt in der Datenbank, wie er ist. So überleben Änderungen aus „Zutaten pflegen“ jedes Update.
+- Zutaten werden am Namen erkannt. Eine umbenannte Zutat ist für die App eine neue.
+
+Ein Test prüft die Datei auf AK-30 und auf Tippfehler wie unbekannte Gruppen, Einheiten oder Monate.
+
+**Gruppe aus der Katalog-Kategorie:** Die 15 Kategorien des Katalogs sind nicht die 13 Gruppen des Wochenwerts. Jede Zutat erbt die Gruppe ihrer Kategorie, Abweichungen stehen als eigenes Feld `gruppe` an der Zutat. Die wichtigsten:
+
+- Kartoffel und Süßkartoffel zählen zu Kartoffeln, nicht zu Gemüse.
+- Käse zählt zu Milch, Butter und Sahne zu Fett.
+- Speck, Schinken und Würstchen zählen zu Wurst.
+- Tomatenmark, passierte und gehackte Tomaten zählen zu Gemüse.
+- Kräuter, Gewürze, Backzutaten und die übrigen Saucen zählen zu Sonstiges.
+
+**Saisontabelle:** Eigene Monatsangaben für die Zutaten der Kategorien Gemüse, Obst und Kräuter im Grundkatalog. Sie entstehen im Projekt aus allgemeinem Wissen und werden von der Familie gegengelesen. Sie werden nicht aus einer der Tabellen in Abschnitt 2 übernommen. Lager-, Import- und getrocknete Ware wie Kartoffeln, Zwiebeln, Äpfel, Zitronen oder Lorbeer bleibt ohne Angabe und ist damit neutral.
 
 **Lernen wie bei Aliassen:** Fehlt ein Gewicht, ergänzt ein Erwachsener es mit einem Tipp an der Lücke. Es gilt dann für alle Rezepte mit dieser Zutat und Einheit.
 
@@ -174,7 +191,7 @@ B wird wie A und V nach jeder Wahl neu berechnet. Fixierte Plätze zählen von A
 
 | ID | Abnahmekriterium | Stufe |
 | --- | --- | --- |
-| AK-30 | Jede Zutat des Grundkatalogs hat eine Lebensmittelgruppe. Jede Zutat der Gruppen Gemüse, Obst, Fleisch, Fisch und Meeresfrüchte, Hülsenfrüchte, Milchprodukte, Käse, Eier, Nüsse, Getreide und Teigwaren sowie Öle und Fette hat einen gültigen BLS-Code und ein Gewicht für ihre Standard-Einheit | 3 |
+| AK-30 | Jede Zutat des Grundkatalogs hat eine Lebensmittelgruppe aus der Liste in Abschnitt 4 und ein Gewicht für ihre Standard-Einheit, wenn diese nicht g oder ml ist. Jede Zutat der Kategorien Gemüse, Obst und Kräuter hat Saisonmonate oder einen festgehaltenen Grund für „ganzjährig“ | 3 |
 | AK-31 | Für ein festes Testrezept weichen alle acht Nährwerte je Portion höchstens 1 % von einer Handrechnung mit denselben BLS-Werten ab | 3 |
 | AK-32 | Von 10 echten Familienrezepten haben mindestens 8 nach dem Ergänzen der vorgeschlagenen Gewichte höchstens eine Lücke | 3 |
 | AK-33 | Eine feste Testwoche ergibt die erwarteten Zählungen für Fisch, Fleisch und Wurst, Hülsenfrüchte, Gemüse und Vegetarisch. Entfallene Plätze zählen nicht | 3 |
@@ -183,6 +200,7 @@ B wird wie A und V nach jeder Wahl neu berechnet. Fixierte Plätze zählen von A
 | AK-36 | Ein Spargelrezept hat im Mai J = 1 und im Dezember J = 0, ein Rezept ohne Saisonzutaten 0,5 | 3 |
 | AK-37 | AK-01 gilt weiter: 9 Plätze bei 200 Rezepten in unter 3 Sekunden, mit beiden neuen Termen | 3 |
 | AK-38 | Die Quellenangabe des BLS steht in der App und im Repo, `BLS-LIZENZ.md` liegt neben dem Auszug | 3 |
+| AK-39 | Jede Zutat des Grundkatalogs außer Wasser und den Kategorien Gewürze und Kräuter hat einen BLS-Code, der im Auszug vorkommt | 3 |
 
 ## 11. Umsetzungsplan
 
@@ -197,6 +215,14 @@ flowchart LR
     m10["<b>M10 Nährwerte</b><br/>BLS-Auszug, Zuordnung<br/>Anzeige je Portion"]
     gate --> m8 --> m9 --> gate2 --> m10
 ```
+
+| Meilenstein | Inhalt | Abnahme |
+| --- | --- | --- |
+| M8 Katalog | Migration 0004, Gruppen, Gewichte, Dichte und Saison im Grundkatalog aus [`katalog.yml`](../backend/delikatessen/data/katalog.yml), Umrechnung in Gramm, „Zutaten pflegen“ mit `PUT /ingredients/{id}` und `GET /ingredients/gaps` | AK-30 |
+| M9 Woche und Planung | Wochenwert mit `GET /plans/{start}/balance`, Terme B und J, Schalter „Ernährung“ | AK-33 bis AK-37 |
+| M10 Nährwerte | Migration 0005, BLS-Auszug und Lizenzvermerk, Zuordnung, Nährwerte je Portion | AK-31, AK-32, AK-38, AK-39 |
+
+M8 ändert für die Familie nichts am Planen und kann deshalb auch vor der Abnahme von Stufe 2 kommen. „Zutaten pflegen“ hilft schon dann beim Import, weil Aliasse ohne Umweg über ein Rezept gepflegt werden.
 
 **Mögliche Erweiterung nach M10: Werte per Barcode.** Bei Fertigprodukten wie Pesto, Brühwürfeln oder Fertigteig hängen die Werte stark von der Marke ab. Beim Pflegen einer solchen Zutat kann ein Erwachsener den Barcode scannen. Die App holt das Produkt dann einmalig aus Open Food Facts und speichert die acht Werte je 100 g an der Zutat, statt einer BLS-Zuordnung. Dazu kommen die Quelle und ein Link auf die Produktseite. Festlegungen, falls die Erweiterung kommt:
 
@@ -224,12 +250,22 @@ Am 13.11.2026 geklärt:
 | Sehen Kinderprofile Nährwerte und Wochenwert? | Ja, alle Profile sehen dasselbe (Abschnitt 8) |
 | Welche Nährwerte? | Die acht Werte der üblichen Nährwerttabelle (Abschnitt 5) |
 | Bremst die Fleisch-Obergrenze die Planung? | Ja, über Term B (Abschnitt 7) |
-| Wer liest Saisontabelle und Stückgewichte gegen? | Kristian, vor Abschluss von M8 |
+| Wer liest Saisontabelle und Stückgewichte gegen? | Kristian, vor Abschluss von M8. Die Tabellen passen zum Einstieg (15.11.2026), Auffälligkeiten werden in `katalog.yml` korrigiert |
+
+Am 15.11.2026 geklärt:
+
+| Frage | Entscheidung |
+| --- | --- |
+| Gehört der BLS-Code zu M8? | Nein, er kommt mit M10 (Migration 0005, AK-39). AK-30 prüft nur Gruppe, Gewicht und Saison |
+| Wie entsteht die Gruppe einer Zutat? | Aus der Katalog-Kategorie, mit einzeln festgelegten Abweichungen (Abschnitt 4) |
+| Zählen Kräuter als Gemüse? | Nein, als Sonstiges. Ihre Mengen spielen für die Gemüseregel keine Rolle |
+| Wo werden die Katalogwerte gepflegt? | In `katalog.yml` im Quelltext, ausgerollt mit dem nächsten Release (Abschnitt 4) |
+| Schließt Saison Rezepte aus? | Nein. Saison ist nur der weiche Term J, ein Bonus für Rezepte mit Zutaten der Saison |
 
 ## 13. Rückverfolgung
 
 | Anforderung | Abschnitt | Prüfung |
 | --- | --- | --- |
-| D-NAEHR | 4, 5, 9 | AK-30, AK-31, AK-32, AK-38 |
-| D-AUSG | 4, 6, 7 | AK-33, AK-34, AK-35, AK-37 |
-| D-SAIS | 4, 7 | AK-36, AK-37 |
+| D-NAEHR | 4, 5, 9 | AK-30, AK-31, AK-32, AK-38, AK-39 |
+| D-AUSG | 4, 6, 7 | AK-30, AK-33, AK-34, AK-35, AK-37 |
+| D-SAIS | 4, 7 | AK-30, AK-36, AK-37 |

@@ -30,6 +30,11 @@ export function Mehr() {
               </Link>
             </li>
             <li>
+              <Link className="row-btn" to="/mehr/zutaten">
+                Zutaten pflegen
+              </Link>
+            </li>
+            <li>
               <Link className="row-btn" to="/mehr/einstellungen">
                 Einstellungen
               </Link>
