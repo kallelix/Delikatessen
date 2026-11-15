@@ -105,7 +105,8 @@ mv -T "$BASE/current.new" "$BASE/current"
 install -m 644 "$TARGET/deploy/systemd/delikatessen.service" /etc/systemd/system/
 install -m 644 "$TARGET/deploy/systemd/delikatessen-backup.service" /etc/systemd/system/
 install -m 644 "$TARGET/deploy/systemd/delikatessen-backup.timer" /etc/systemd/system/
-for unit in delikatessen-update-check.service delikatessen-update-check.timer delikatessen-update-check.path \n  delikatessen-update.service delikatessen-update.path; do
+for unit in delikatessen-update-check.service delikatessen-update-check.timer delikatessen-update-check.path \
+  delikatessen-update.service delikatessen-update.path; do
   install -m 644 "$TARGET/deploy/systemd/$unit" /etc/systemd/system/
 done
 systemctl daemon-reload
